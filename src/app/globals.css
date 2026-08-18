@@ -2,25 +2,106 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111111;
+  --muted: #f4f4f5;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --accent: #3b9eff;
+  --accent-dark: #1e7ae6;
+  --accent-soft: #e8f3ff;
+  --accent-muted: #b7d8ff;
+  --surface: #fafafa;
+  --surface-elevated: #ffffff;
+
+  --brand: #3b9eff;
+  --brand-shadow: #1e7ae6;
+  --brand-soft: #e8f3ff;
+  --track: #e5e7eb;
+  --correct: #3b9eff;
+  --correct-surface: #e8f3ff;
+  --correct-foreground: #1e7ae6;
+  --wrong: #ef4444;
+  --wrong-surface: #fef2f2;
+  --wrong-foreground: #dc2626;
+}
+
+.event-theme {
+  --background: #05070b;
+  --foreground: #f4f6fb;
+  --muted: #12151c;
+  --muted-foreground: #9aa3b5;
+  --border: rgba(255, 255, 255, 0.1);
+  --accent-soft: rgba(59, 158, 255, 0.16);
+  --surface: #0c1018;
+  --surface-elevated: #111722;
+  --track: #1c2330;
+  --correct-surface: rgba(59, 158, 255, 0.14);
+  --correct-foreground: #cfe7ff;
+  --wrong-surface: rgba(255, 90, 122, 0.14);
+  --wrong-foreground: #ffc2ce;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-muted: var(--accent-muted);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-brand: var(--brand);
+  --color-brand-shadow: var(--brand-shadow);
+  --color-brand-soft: var(--brand-soft);
+  --color-track: var(--track);
+  --color-correct: var(--correct);
+  --color-correct-surface: var(--correct-surface);
+  --color-correct-foreground: var(--correct-foreground);
+  --color-wrong: var(--wrong);
+  --color-wrong-surface: var(--wrong-surface);
+  --color-wrong-foreground: var(--wrong-foreground);
+  --font-sans: var(--font-noto), var(--font-inter), sans-serif;
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+.app-bg {
+  background-color: #ffffff;
+  background-image:
+    radial-gradient(circle at 10% 12%, rgba(59, 158, 255, 0.55) 0 2px, transparent 2.6px),
+    radial-gradient(circle at 86% 8%, rgba(59, 158, 255, 0.4) 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at 92% 28%, rgba(59, 158, 255, 0.28) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 16% 62%, rgba(59, 158, 255, 0.22) 0 1.4px, transparent 2px);
+}
+
+.event-bg {
+  background-color: #05070b;
+  background-image:
+    radial-gradient(circle at 8% 12%, rgba(59, 158, 255, 0.9) 0 2px, transparent 2.6px),
+    radial-gradient(circle at 22% 6%, rgba(59, 158, 255, 0.55) 0 1.4px, transparent 2px),
+    radial-gradient(circle at 78% 10%, rgba(59, 158, 255, 0.7) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 92% 22%, rgba(59, 158, 255, 0.45) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 14% 48%, rgba(59, 158, 255, 0.4) 0 1.5px, transparent 2.1px),
+    radial-gradient(circle at 86% 62%, rgba(59, 158, 255, 0.5) 0 1.6px, transparent 2.2px),
+    radial-gradient(900px 420px at 80% -10%, rgba(59, 158, 255, 0.12), transparent 55%);
+}
+
+.glass-card,
+.event-card {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+}
+
+.section-en {
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 700;
 }
