@@ -10,7 +10,12 @@ type SessionPayload = {
 };
 
 function getSecret(): string {
-  return process.env.AUTH_SECRET ?? "dev-only-change-me-set-AUTH_SECRET";
+  const secret = process.env.AUTH_SECRET?.trim();
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET がありません。Vercel の環境変数に設定してください。");
+  }
+  return "dev-only-change-me-set-AUTH_SECRET";
 }
 
 function sign(value: string): string {

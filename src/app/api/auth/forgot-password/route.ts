@@ -23,14 +23,15 @@ export async function POST(request: Request) {
   if (!getMailConfig()) {
     return NextResponse.json(
       {
-        error:
-          "アプリの送信元メールが未設定です。プロジェクト直下の .env.local に GMAIL_USER と GMAIL_APP_PASSWORD を書いて、開発サーバーを再起動してください。",
+        error: process.env.VERCEL
+          ? "アプリの送信元メールが未設定です。Vercel の環境変数に GMAIL_USER と GMAIL_APP_PASSWORD を設定してください。"
+          : "アプリの送信元メールが未設定です。プロジェクト直下の .env.local に GMAIL_USER と GMAIL_APP_PASSWORD を書いて、開発サーバーを再起動してください。",
       },
       { status: 503 },
     );
   }
 
-  const user = findAccountByEmail(parsed.email);
+  const user = await findAccountByEmail(parsed.email);
   if (user) {
     const token = await issuePasswordResetToken(user.email);
     if (token && token !== "throttled") {

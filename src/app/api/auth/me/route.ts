@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: "未ログインです" }, { status: 401 });
   }
 
-  const account = findAccountById(userId);
+  const account = await findAccountById(userId);
   if (!account) {
     return NextResponse.json({ error: "未ログインです" }, { status: 401 });
   }
