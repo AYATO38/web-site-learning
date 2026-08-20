@@ -5,7 +5,8 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { questions } from "@/lib/questions";
 import { ChoiceButton } from "@/components/choice-button";
-import { Check, Heart, X, PartyPopper } from "lucide-react";
+import { QuestionBubble } from "@/components/question-bubble";
+import { Check, Heart, X } from "lucide-react";
 
 type Phase = "answering" | "correct" | "wrong";
 
@@ -63,49 +64,39 @@ export function Quiz({ lessonTitle }: { lessonTitle?: string }) {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col bg-background">
+    <main className="quiz-play flex min-h-dvh flex-col">
       <header className="mx-auto flex w-full max-w-2xl items-center gap-4 px-4 py-5 sm:px-6">
         <Link
           href="/"
           aria-label="ホームに戻る"
-          className="text-muted-foreground transition-colors hover:text-foreground"
+          className="flex size-10 items-center justify-center rounded-full border border-border bg-surface-elevated text-muted-foreground transition-colors hover:text-foreground"
         >
-          <X className="size-7" strokeWidth={3} />
+          <X className="size-6" strokeWidth={3} />
         </Link>
-        <div className="h-4 flex-1 overflow-hidden rounded-full bg-track">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <div
             role="progressbar"
             aria-valuenow={Math.round(progress)}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-label="学習の進捗"
-            className="relative h-full rounded-full bg-brand transition-[width] duration-500 ease-out"
+            className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
             style={{ width: `${Math.max(progress, 6)}%` }}
-          >
-            <span className="absolute inset-x-1 top-1 h-1 rounded-full bg-white/40" />
-          </div>
+          />
         </div>
-        <div className="flex items-center gap-1 font-extrabold text-wrong">
-          <Heart className="size-6 fill-wrong text-wrong" />
+        <div className="flex items-center gap-1 rounded-full border border-border bg-surface-elevated px-2.5 py-1 font-semibold text-wrong">
+          <Heart className="size-5 fill-wrong text-wrong" />
           <span className="text-lg tabular-nums">{hearts}</span>
         </div>
       </header>
 
       <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-40 pt-2 sm:px-6">
         <p className="text-sm font-bold text-accent">
-          {lessonTitle ? `${lessonTitle} · ` : ""}問題 {current + 1} / {total}
+          {lessonTitle ? `${lessonTitle} · ` : ""}もんだい {current + 1} / {total}
         </p>
-        <h1 className="mt-2 text-2xl font-extrabold leading-snug text-balance sm:text-3xl">
-          {question.prompt}
-        </h1>
+        <QuestionBubble prompt={question.prompt} code={question.code} />
 
-        {question.code && (
-          <pre className="mt-5 overflow-x-auto rounded-xl border border-border bg-zinc-900 px-5 py-4 font-mono text-sm font-semibold text-white sm:text-base">
-            <code>{question.code}</code>
-          </pre>
-        )}
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {question.choices.map((choice, index) => (
             <ChoiceButton
               key={choice}
@@ -198,24 +189,24 @@ function Footer({
             onClick={onCheck}
             disabled={!canCheck}
             className={cn(
-              "w-full rounded-lg py-4 text-lg font-bold",
+              "w-full rounded-full py-4 text-lg font-bold",
               canCheck
-                ? "bg-accent text-white hover:bg-accent-dark"
+                ? "event-cta"
                 : "cursor-not-allowed bg-muted text-muted-foreground",
             )}
           >
-            チェック
+            これで答える！
           </button>
         ) : (
           <button
             type="button"
             onClick={onContinue}
             className={cn(
-              "w-full rounded-lg py-4 text-lg font-bold text-white",
-              isCorrect ? "bg-accent" : "bg-wrong",
+              "w-full rounded-full py-4 text-lg font-bold text-white",
+              isCorrect ? "event-cta" : "bg-wrong text-white",
             )}
           >
-            {isLast ? "結果を見る" : "つづける"}
+            {isLast ? "結果を見る" : "つぎへ！"}
           </button>
         )}
       </div>
@@ -233,12 +224,12 @@ function ResultScreen({
   onRestart: () => void;
 }) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background px-6 text-center">
-      <span className="flex size-20 items-center justify-center rounded-full bg-brand-soft text-brand">
-        <PartyPopper className="size-10" />
+    <main className="quiz-play flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
+      <span className="flex size-24 items-center justify-center rounded-full border border-border bg-surface-elevated text-4xl">
+        🎉
       </span>
       <div>
-        <h1 className="text-3xl font-extrabold">レッスン完了！</h1>
+        <h1 className="font-display text-3xl font-medium">レッスン完了！</h1>
         <p className="mt-2 font-semibold text-muted-foreground">
           {total} 問中クリア · 残りライフ {hearts}
         </p>
@@ -246,7 +237,7 @@ function ResultScreen({
       <button
         type="button"
         onClick={onRestart}
-        className="rounded-lg bg-accent px-10 py-4 text-lg font-bold text-white hover:bg-accent-dark"
+        className="event-cta rounded-full px-10 py-4 text-lg font-semibold"
       >
         もう一度
       </button>

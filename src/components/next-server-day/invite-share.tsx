@@ -65,7 +65,7 @@ export function InviteShare({ roomId }: { roomId: string }) {
   return (
     <div className="event-card mb-6 rounded-2xl p-4 text-left">
       <p className="section-en">Invite</p>
-      <h3 className="mt-1 text-base font-bold">別のネットの人も招待できます</h3>
+      <h3 className="mt-1 text-base font-bold">リンクで招待する</h3>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
         {usingPublic
           ? "このリンクを送ると、Wi-Fiが違っても同じ部屋に入れます。"
@@ -79,7 +79,7 @@ export function InviteShare({ roomId }: { roomId: string }) {
           type="button"
           onClick={() => void copy(url, "link")}
           disabled={!url}
-          className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-white"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full event-cta"
           aria-label="招待リンクをコピー"
         >
           {copied === "link" ? (

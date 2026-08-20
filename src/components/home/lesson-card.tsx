@@ -13,7 +13,7 @@ type LessonCardProps = {
 
 export function LessonCard({ lesson, index, completed }: LessonCardProps) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-border bg-surface-elevated">
+    <article className="event-card overflow-visible rounded-2xl">
       <div className="flex items-start gap-4 p-5">
         <div
           className={cn(
@@ -32,10 +32,10 @@ export function LessonCard({ lesson, index, completed }: LessonCardProps) {
         </div>
       </div>
 
-      <div className="flex gap-2 border-t border-border p-4">
+      <div className="flex gap-2 border-t border-border p-4 pb-5">
         <Link
           href={`/video?lesson=${lesson.id}`}
-          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-bold text-white"
+          className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full bg-accent px-3 py-3 text-sm font-semibold text-white shadow-[0_4px_0_#1e7ae6] sm:gap-2 sm:px-4"
         >
           <PlayCircle className="size-4" />
           講義動画
@@ -44,13 +44,13 @@ export function LessonCard({ lesson, index, completed }: LessonCardProps) {
         {completed ? (
           <Link
             href={`/quiz?lesson=${lesson.id}`}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-accent/40 bg-accent-soft px-4 py-3 text-sm font-bold text-accent"
+            className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full border border-accent/40 bg-accent-soft px-3 py-3 text-sm font-semibold text-accent sm:gap-2 sm:px-4"
           >
             <Zap className="size-4" />
             クイズ
           </Link>
         ) : (
-          <span className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-muted px-4 py-3 text-sm font-bold text-muted-foreground">
+          <span className="flex min-w-0 flex-1 cursor-not-allowed items-center justify-center gap-1 rounded-full bg-muted px-3 py-3 text-sm font-semibold text-muted-foreground sm:gap-2 sm:px-4">
             <Lock className="size-4" />
             クイズ
           </span>

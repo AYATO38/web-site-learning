@@ -37,10 +37,10 @@ function VideoContent() {
         ホームに戻る
       </Link>
 
-      <h1 className="text-xl font-extrabold text-foreground">{lesson.title}</h1>
+      <h1 className="font-display text-xl font-medium text-foreground">{lesson.title}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{lesson.description}</p>
 
-      <div className="mt-5 overflow-hidden rounded-[1.4rem] border border-white/40 bg-black shadow-[0_18px_40px_rgba(20,24,33,0.18)]">
+      <div className="mt-5 overflow-hidden rounded-[1.4rem] border border-border bg-foreground shadow-[0_18px_40px_rgba(23,23,23,0.08)]">
         <div className="relative aspect-video w-full">
           <iframe
             src={lesson.videoUrl}
@@ -60,7 +60,7 @@ function VideoContent() {
           type="button"
           onClick={handleComplete}
           disabled={completed}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-accent py-3.5 text-sm font-bold text-white hover:bg-accent-dark disabled:cursor-default disabled:bg-muted disabled:text-muted-foreground"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3.5 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-default disabled:bg-muted disabled:text-muted-foreground"
         >
           <CheckCircle2 className="size-4" />
           {completed ? "視聴完了済み" : "視聴完了"}

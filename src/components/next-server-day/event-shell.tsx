@@ -1,7 +1,8 @@
 export function EventShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="event-theme relative flex min-h-dvh flex-col overflow-hidden text-foreground">
+    <main className="event-theme relative flex min-h-dvh flex-col text-foreground">
       <div className="event-bg pointer-events-none absolute inset-0" />
+      <span className="event-glow pointer-events-none" aria-hidden />
       <div className="relative z-10 flex min-h-dvh flex-col">{children}</div>
     </main>
   );

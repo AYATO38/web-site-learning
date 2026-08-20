@@ -34,7 +34,7 @@ function QuizGate() {
           <Lock className="size-8" />
         </span>
         <div>
-          <h1 className="text-xl font-extrabold text-foreground">
+          <h1 className="font-display text-xl font-medium text-foreground">
             クイズはロック中
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -43,7 +43,7 @@ function QuizGate() {
         </div>
         <Link
           href={`/video?lesson=${lesson.id}`}
-          className="rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white hover:bg-accent-dark"
+          className="event-cta rounded-full px-6 py-3 text-sm font-semibold"
         >
           講義動画を見る
         </Link>

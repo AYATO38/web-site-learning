@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@/lib/utils";
 
 type Status = "idle" | "selected" | "correct" | "wrong";
@@ -12,7 +10,13 @@ type ChoiceButtonProps = {
   onSelect: () => void;
 };
 
-const INDEX_LABELS = ["1", "2", "3", "4"] as const;
+const INDEX_LABELS = ["A", "B", "C", "D"] as const;
+const INDEX_TONES = [
+  "bg-sky-100 text-sky-700",
+  "bg-amber-100 text-amber-700",
+  "bg-rose-100 text-rose-700",
+  "bg-violet-100 text-violet-700",
+] as const;
 
 export function ChoiceButton({
   label,
@@ -26,24 +30,26 @@ export function ChoiceButton({
       type="button"
       onClick={onSelect}
       disabled={disabled}
+      data-status={status}
       className={cn(
-        "flex items-center gap-3 rounded-xl border px-3 py-3.5 text-left font-semibold transition-colors duration-150 sm:px-4 sm:py-4",
+        "choice-btn flex items-center gap-3 rounded-[1.35rem] border-2 px-3 py-3.5 text-left font-semibold transition-all duration-150 sm:px-4 sm:py-4",
         status === "idle" &&
-          "border-border bg-surface-elevated hover:border-accent/50 hover:bg-accent-soft",
-        status === "selected" && "border-accent bg-accent-soft text-foreground",
+          "border-transparent bg-surface-elevated text-foreground shadow-[0_6px_0_#ddd4c8] hover:-translate-y-0.5 hover:border-accent/40",
+        status === "selected" &&
+          "-translate-y-0.5 border-accent bg-accent-soft text-foreground shadow-[0_6px_0_#93c5fd]",
         status === "correct" &&
-          "border-correct bg-correct-surface text-correct-foreground",
+          "border-correct bg-correct-surface text-correct-foreground shadow-[0_6px_0_#93c5fd]",
         status === "wrong" &&
-          "border-wrong bg-wrong-surface text-wrong-foreground",
+          "border-wrong bg-wrong-surface text-wrong-foreground shadow-[0_6px_0_#fecaca]",
         disabled &&
           status === "idle" &&
-          "cursor-default hover:border-border hover:bg-surface-elevated",
+          "cursor-default shadow-none hover:translate-y-0 hover:border-transparent",
       )}
     >
       <span
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-md text-sm font-bold",
-          status === "idle" && "bg-muted text-muted-foreground",
+          "choice-mark flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-black",
+          status === "idle" && INDEX_TONES[index],
           status === "selected" && "bg-accent text-white",
           status === "correct" && "bg-correct text-white",
           status === "wrong" && "bg-wrong text-white",

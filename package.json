@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs",
+    "icon:desktop": "node scripts/sync-desktop-icon.mjs --force",
     "share": "node scripts/share.mjs",
     "db:migrate": "node --env-file=.env.local scripts/migrate-json-to-db.mjs",
     "build": "next build",

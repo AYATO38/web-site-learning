@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { X, Check, Sparkles, Minus, Plus } from "lucide-react";
 import { ChoiceButton } from "@/components/choice-button";
+import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { InviteShare } from "@/components/next-server-day/invite-share";
 import { EventShell } from "@/components/next-server-day/event-shell";
+import { EventHero } from "@/components/next-server-day/event-hero";
 import { ResultScreen } from "@/components/next-server-day/result-screen";
 import { cn } from "@/lib/utils";
 import {
@@ -420,24 +422,14 @@ export default function NextServerDayPage() {
 
     return (
       <EventShell>
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
-          <header className="mb-6 text-center">
-            <Link
-              href="/"
-              className="mb-4 inline-flex items-center text-sm font-semibold text-muted-foreground hover:text-foreground"
-            >
-              ← ホームに戻る
-            </Link>
-            <p className="section-en">Event</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">
-              次サバDAY
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              招待リンクを送れば、別のネットの端末からも参加できます
-            </p>
-          </header>
+        <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
+          <EventHero
+            backHref="/"
+            title="次サバDAY"
+            subtitle="招待リンクを送れば、別のネットの端末からも参加できます"
+          />
 
-          <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">
+          <div className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 ring-1 ring-border">
             <button
               type="button"
               onClick={() => {
@@ -445,9 +437,9 @@ export default function NextServerDayPage() {
                 setError(null);
               }}
               className={cn(
-                "rounded-xl py-2.5 text-sm font-extrabold",
+                "rounded-full py-2.5 text-sm font-semibold",
                 entryMode === "create"
-                  ? "bg-accent text-white shadow-sm"
+                  ? "event-cta shadow-none"
                   : "text-muted-foreground",
               )}
             >
@@ -460,9 +452,9 @@ export default function NextServerDayPage() {
                 setError(null);
               }}
               className={cn(
-                "rounded-xl py-2.5 text-sm font-extrabold",
+                "rounded-full py-2.5 text-sm font-semibold",
                 entryMode === "join"
-                  ? "bg-accent text-white shadow-sm"
+                  ? "event-cta shadow-none"
                   : "text-muted-foreground",
               )}
             >
@@ -525,7 +517,7 @@ export default function NextServerDayPage() {
               </section>
 
               {error && (
-                <p className="mt-3 text-sm font-semibold text-rose-300">{error}</p>
+                <p className="mt-3 text-sm font-semibold text-wrong">{error}</p>
               )}
 
               <button
@@ -533,9 +525,9 @@ export default function NextServerDayPage() {
                 onClick={() => void startWithTeams()}
                 disabled={!canStart || busy}
                 className={cn(
-                  "mt-6 w-full rounded-lg py-4 text-lg font-bold",
+                  "mt-6 w-full rounded-full py-4 text-lg font-bold",
                   canStart && !busy
-                    ? "bg-accent text-white hover:bg-accent-dark"
+                    ? "event-cta"
                     : "cursor-not-allowed bg-muted text-muted-foreground",
                 )}
               >
@@ -558,17 +550,17 @@ export default function NextServerDayPage() {
                 />
               </label>
               {error && (
-                <p className="mt-3 text-sm font-semibold text-rose-300">{error}</p>
+                <p className="mt-3 text-sm font-semibold text-wrong">{error}</p>
               )}
               <button
                 type="button"
                 onClick={() => void joinRoom()}
                 disabled={busy}
                 className={cn(
-                  "mt-6 w-full rounded-lg py-4 text-lg font-bold",
+                  "mt-6 w-full rounded-full py-4 text-lg font-bold",
                   busy
                     ? "cursor-not-allowed bg-muted text-muted-foreground"
-                    : "bg-accent text-white hover:bg-accent-dark",
+                    : "event-cta",
                 )}
               >
                 {busy ? "確認中..." : "部屋に入る"}
@@ -583,18 +575,12 @@ export default function NextServerDayPage() {
   if (!myTeam) {
     return (
       <EventShell>
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
-          <header className="mb-6 text-center">
-            <p className="inline-flex rounded-md bg-accent-soft px-3 py-1 font-mono text-xs font-bold tracking-[0.28em] text-accent">
-              {roomId}
-            </p>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight">
-              チームを選ぶ
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              名前を入れて、同じチームに複数人で入れます
-            </p>
-          </header>
+        <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
+          <EventHero
+            kicker={`Room ${roomId}`}
+            title="チームを選ぶ"
+            subtitle="名前を入れて、同じチームに複数人で入れます"
+          />
 
           <InviteShare roomId={roomId} />
 
@@ -613,7 +599,7 @@ export default function NextServerDayPage() {
           </label>
 
           {error && (
-            <p className="mb-3 text-sm font-semibold text-rose-300">{error}</p>
+            <p className="mb-3 text-sm font-semibold text-wrong">{error}</p>
           )}
 
           <div className="grid gap-3">
@@ -650,29 +636,20 @@ export default function NextServerDayPage() {
   if (!selectedDifficulty) {
     return (
       <EventShell>
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
-          <header className="mb-6 text-center">
-            <Link
-              href="/"
-              className="mb-4 inline-flex items-center text-sm font-semibold text-muted-foreground hover:text-foreground"
-            >
-              ← ホームに戻る
-            </Link>
-            <p className="section-en">Room {roomId}</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">
-              難易度を選ぶ
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              自分のチーム: {myTeam} / {displayName || "未設定"}
-            </p>
-            <button
-              type="button"
-              onClick={() => setMyTeam(null)}
-              className="mt-2 text-xs font-semibold text-muted-foreground underline-offset-2 hover:underline"
-            >
-              チーム選択をやり直す
-            </button>
-          </header>
+        <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
+          <EventHero
+            backHref="/"
+            kicker={`Room ${roomId}`}
+            title="難易度を選ぶ"
+            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"}`}
+          />
+          <button
+            type="button"
+            onClick={() => setMyTeam(null)}
+            className="mb-6 -mt-3 text-xs font-semibold text-muted-foreground underline-offset-2 hover:underline"
+          >
+            チーム選択をやり直す
+          </button>
 
           <div className="mb-6">
             <LiveBoard room={room} myTeam={myTeam} myMemberId={memberId} />
@@ -774,26 +751,21 @@ export default function NextServerDayPage() {
   return (
     <EventShell>
       <header className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5 sm:px-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="rounded-lg bg-accent p-2 text-sm font-bold text-white">
-              <Sparkles className="size-4" />
-            </span>
-            <div>
-              <p className="section-en">
-                {roomId} · {myTeam}
-              </p>
-              <h2 className="text-lg font-extrabold">次サバDAY 限定クイズ</h2>
-            </div>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground">
+              {roomId} · {myTeam}
+            </p>
+            <h2 className="font-display mt-2 text-lg font-medium">みんなでクイズ</h2>
           </div>
           <Link
             href="/"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-white text-muted-foreground transition-colors hover:text-foreground"
           >
-            <X className="size-7" strokeWidth={3} />
+            <X className="size-6" strokeWidth={3} />
           </Link>
         </div>
-        <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
             role="progressbar"
             aria-valuenow={Math.round(progress)}
@@ -808,32 +780,24 @@ export default function NextServerDayPage() {
 
       <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-[calc(14rem+env(safe-area-inset-bottom))] pt-2 sm:px-6">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-bold text-accent">
-            {DIFFICULTY_LABELS[selectedDifficulty].label} · 問題 {current + 1} /{" "}
+          <p className="text-sm font-semibold text-muted-foreground">
+            {DIFFICULTY_LABELS[selectedDifficulty].label} · もんだい {current + 1} /{" "}
             {total}
           </p>
           <div className="flex items-center gap-2">
             {combo >= 2 && (
-              <span className="rounded-md bg-accent px-3 py-1 text-sm font-bold text-white">
-                {combo}連続
+              <span className="rounded-full bg-accent px-3 py-1 text-sm font-semibold text-white">
+                {combo}連続！
               </span>
             )}
-            <span className="rounded-md bg-accent-soft px-3 py-1 text-sm font-bold text-accent">
+            <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-semibold text-foreground">
               XP +{question.xp}
             </span>
           </div>
         </div>
-        <h1 className="mt-2 text-2xl font-extrabold leading-snug text-balance sm:text-3xl">
-          {question.prompt}
-        </h1>
+        <QuestionBubble prompt={question.prompt} code={question.code} />
 
-        {question.code && (
-          <pre className="mt-5 overflow-x-auto rounded-xl border border-border bg-zinc-900 px-5 py-4 font-mono text-sm font-semibold text-white sm:text-base">
-            <code>{question.code}</code>
-          </pre>
-        )}
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {question.choices.map((choice, index) => (
             <ChoiceButton
               key={choice}
@@ -853,7 +817,7 @@ export default function NextServerDayPage() {
 
       <footer
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]",
+          "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]",
           phase === "correct" && "border-correct/30 bg-correct-surface",
           phase === "wrong" && "border-wrong/30 bg-wrong-surface",
         )}
@@ -898,26 +862,26 @@ export default function NextServerDayPage() {
               onClick={handleCheck}
               disabled={selected === null}
               className={cn(
-                "w-full rounded-lg py-4 text-lg font-bold",
+                "w-full rounded-full py-4 text-lg font-bold",
                 selected !== null
-                  ? "bg-accent text-white hover:bg-accent-dark"
+                  ? "event-cta"
                   : "cursor-not-allowed bg-muted text-muted-foreground",
               )}
             >
-              チェック
+              これで答える！
             </button>
           ) : (
             <button
               type="button"
               onClick={handleContinue}
               className={cn(
-                "w-full rounded-lg py-4 text-lg font-bold text-white",
+                "w-full rounded-full py-4 text-lg font-bold text-white",
                 phase === "correct"
-                  ? "bg-accent text-white"
+                  ? "event-cta"
                   : "bg-wrong text-white",
               )}
             >
-              {current + 1 >= total ? "結果を見る" : "つづける"}
+              {current + 1 >= total ? "結果を見る" : "つぎへ！"}
             </button>
           )}
         </div>

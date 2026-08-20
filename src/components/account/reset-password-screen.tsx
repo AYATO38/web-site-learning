@@ -37,7 +37,7 @@ export function ResetPasswordScreen({ token }: { token: string }) {
     <div className="mx-auto w-full max-w-lg flex-1 px-4 pb-36 pt-10">
       <header className="mb-8">
         <p className="section-en">Account</p>
-        <h1 className="mt-1 text-2xl font-bold">パスワード再設定</h1>
+        <h1 className="font-display mt-1 text-2xl font-medium">パスワード再設定</h1>
       </header>
 
       {!token ? (
@@ -88,7 +88,7 @@ export function ResetPasswordScreen({ token }: { token: string }) {
             type="submit"
             disabled={busy}
             className={cn(
-              "mt-1 w-full rounded-lg py-4 text-lg font-bold",
+              "mt-1 w-full rounded-full py-4 text-lg font-semibold",
               busy
                 ? "cursor-not-allowed bg-muted text-muted-foreground"
                 : "bg-accent text-white hover:bg-accent-dark",

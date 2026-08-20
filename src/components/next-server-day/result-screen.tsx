@@ -18,10 +18,10 @@ function rankLabel(index: number) {
 }
 
 function rankAccent(index: number) {
-  if (index === 0) return "from-amber-300/30 to-accent/10 ring-amber-300/50";
-  if (index === 1) return "from-zinc-200/15 to-transparent ring-white/20";
-  if (index === 2) return "from-orange-400/20 to-transparent ring-orange-400/30";
-  return "from-white/5 to-transparent ring-transparent";
+  if (index === 0) return "from-[#c9a39a]/30 to-transparent ring-[#c9a39a]/50";
+  if (index === 1) return "from-foreground/5 to-transparent ring-border";
+  if (index === 2) return "from-[#d4c4b0]/50 to-transparent ring-[#d4c4b0]";
+  return "from-transparent to-transparent ring-transparent";
 }
 
 export function ResultScreen({
@@ -55,9 +55,8 @@ export function ResultScreen({
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-5 py-10">
       <p className="section-en text-center">Result</p>
-      <h1 className="mt-1 text-center text-3xl font-bold tracking-tight">
-        結果発表
-      </h1>
+      <h1 className="event-title mt-2 text-center">結果発表</h1>
+      <span className="rule-line mx-auto mt-3" />
       <p className="mt-2 text-center text-sm text-muted-foreground">
         {allDone
           ? "全チームの結果が出そろいました"
@@ -117,7 +116,7 @@ export function ResultScreen({
       <button
         type="button"
         onClick={onRestart}
-        className="mt-8 inline-flex items-center justify-center gap-2 rounded-lg bg-accent py-4 text-lg font-bold text-white hover:bg-accent-dark"
+        className="event-cta mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full py-4 text-lg font-semibold"
       >
         <RotateCcw className="size-5" />
         もう一度挑戦

@@ -28,7 +28,7 @@ export function LiveBoard({
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="section-en">Status</p>
-          <h3 className="text-base font-bold">チームの回答状況</h3>
+          <h3 className="text-base font-bold">会場の回答状況</h3>
         </div>
         <p className="rounded-md bg-accent-soft px-2.5 py-1 font-mono text-xs font-bold tracking-[0.18em] text-accent">
           {room.id}
