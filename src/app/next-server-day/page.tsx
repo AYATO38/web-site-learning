@@ -778,7 +778,7 @@ export default function NextServerDayPage() {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-[calc(14rem+env(safe-area-inset-bottom))] pt-2 sm:px-6">
+      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-[calc(12rem+env(safe-area-inset-bottom))] pt-2 sm:px-6">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-muted-foreground">
             {DIFFICULTY_LABELS[selectedDifficulty].label} · もんだい {current + 1} /{" "}
@@ -817,7 +817,7 @@ export default function NextServerDayPage() {
 
       <footer
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]",
+          "fixed inset-x-0 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 border-t border-border bg-background/90 backdrop-blur-xl",
           phase === "correct" && "border-correct/30 bg-correct-surface",
           phase === "wrong" && "border-wrong/30 bg-wrong-surface",
         )}

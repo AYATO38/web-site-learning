@@ -106,7 +106,7 @@ export const defaultOutfit: MascotOutfit = {
   eyes: "round",
   mouth: "smile",
   glasses: "none",
-  hat: "cap",
+  hat: "none",
   shirt: "white-tee",
   blush: true,
 };
@@ -248,7 +248,12 @@ export function loadOutfit(): MascotOutfit {
 }
 
 export function saveOutfit(outfit: MascotOutfit): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(outfit));
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(outfit));
+  } catch {
+    /* Safari のプライベートブラウズなど */
+  }
 }
 
 function sample<T>(list: readonly T[]): T {

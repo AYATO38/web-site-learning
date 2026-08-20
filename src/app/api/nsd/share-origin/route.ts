@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
+import { publicAppOrigin } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -13,20 +14,16 @@ function publicOrigin(value: string | undefined): string | null {
 }
 
 export async function GET() {
-  const fromEnv = publicOrigin(process.env.APP_URL);
-  if (fromEnv) {
-    return NextResponse.json({ origin: fromEnv });
-  }
-
   try {
-    const origin = publicOrigin(
+    const tunnel = publicOrigin(
       readFileSync(join(process.cwd(), "data", "share-origin.txt"), "utf8"),
     );
-    if (!origin || !/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/i.test(origin)) {
-      return NextResponse.json({ origin: null });
+    if (tunnel && /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/i.test(tunnel)) {
+      return NextResponse.json({ origin: tunnel });
     }
-    return NextResponse.json({ origin });
   } catch {
-    return NextResponse.json({ origin: null });
+    /* no tunnel yet */
   }
+
+  return NextResponse.json({ origin: publicAppOrigin() });
 }

@@ -26,8 +26,8 @@ export function HomeScreen() {
   }, []);
 
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-lg flex-1 flex-col px-5 pb-40 pt-10">
-      <header className="mb-8 min-w-0">
+    <div className="mx-auto flex w-full min-w-0 max-w-lg flex-1 flex-col gap-10 px-5 pb-40 pt-10">
+      <header className="min-w-0">
         <p className="brand-mark text-[2rem] sm:text-[2.2rem]">POSSE</p>
         <span className="rule-line mt-3" />
         <p className="section-en mt-8">Learning</p>
@@ -38,7 +38,7 @@ export function HomeScreen() {
         </h1>
       </header>
 
-      <section className="mb-12 flex justify-center">
+      <section className="flex justify-center">
         <MascotCharacter />
       </section>
 
@@ -66,7 +66,7 @@ export function HomeScreen() {
         </Link>
       </section>
 
-      <section className="mt-12">
+      <section>
         <p className="section-en">Lessons</p>
         <h2 className="mb-4 mt-1 text-[1.45rem] font-black tracking-tight">
           レッスン

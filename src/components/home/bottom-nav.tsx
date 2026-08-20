@@ -20,7 +20,7 @@ const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/account", label: "アカウント", icon: User },
 ];
 
-const HIDE_NAV_PREFIXES = ["/quiz", "/next-server-day"];
+const HIDE_NAV_PREFIXES = ["/quiz"];
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -35,7 +35,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 overflow-visible border-t border-border bg-white pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto grid min-h-[4.75rem] max-w-lg grid-cols-5 items-end px-1 pt-3">
+      <div className="mx-auto grid h-[4.75rem] max-w-lg grid-cols-5 items-center px-1">
         {navItems.map((item) => {
           const active = isActive(pathname, item.href);
           const Icon = item.icon;
@@ -45,8 +45,8 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-w-0 flex-col items-center justify-end gap-1 pb-2",
-                isHome && "-mt-6",
+                "flex h-full min-w-0 flex-col items-center justify-center",
+                isHome ? "relative z-10 gap-0.5" : "gap-1",
                 active ? "text-accent" : "text-muted-foreground",
               )}
               aria-current={active ? "page" : undefined}
@@ -54,19 +54,19 @@ export function BottomNav() {
               {isHome ? (
                 <span
                   className={cn(
-                    "flex size-14 shrink-0 items-center justify-center rounded-full text-white shadow-[0_10px_24px_rgba(59,158,255,0.42)] ring-[4px] ring-white sm:size-[3.65rem]",
+                    "-mt-7 flex size-14 shrink-0 items-center justify-center rounded-full text-white shadow-[0_10px_24px_rgba(59,158,255,0.42)] ring-[4px] ring-white sm:size-[3.65rem]",
                     active ? "bg-accent-dark" : "bg-accent",
                   )}
                 >
-                  <Icon className="size-8" strokeWidth={2.4} />
+                  <Icon className="size-7 sm:size-8" strokeWidth={2.4} />
                 </span>
               ) : (
                 <Icon className="size-5 shrink-0" strokeWidth={active ? 2.5 : 2} />
               )}
               <span
                 className={cn(
-                  "max-w-full px-0.5 text-center text-[9px] font-medium leading-tight sm:text-[10px]",
-                  isHome && "mt-1",
+                  "max-w-full px-0.5 text-center text-[10px] font-medium leading-none",
+                  isHome && "mt-0.5",
                 )}
               >
                 {item.label}

@@ -20,8 +20,11 @@ const ICON_PUBLIC = join(ROOT, "public", "icon.png");
 const DESKTOP = join(homedir(), "Desktop");
 const PNG_DEST = join(DESKTOP, "POSSE.png");
 const APP_DEST = join(DESKTOP, "POSSE.app");
-const APP_URL = "https://learner-app-rho.vercel.app";
+const LAUNCHER_VERSION = "linked-origin-1";
 const STAMP = join(ROOT, ".next", "desktop-icon.sha");
+const NODE_BIN = process.execPath;
+const DEV_URL_SCRIPT = join(ROOT, "scripts", "write-dev-url.mjs");
+const SITE_FILE = join(ROOT, "site.config.json");
 
 function sha(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -77,7 +80,28 @@ function buildIcns(srcPng) {
 }
 
 function ensureApp() {
-  run("osacompile", ["-o", APP_DEST, "-e", `open location "${APP_URL}"`]);
+  const scriptPath = join(tmpdir(), `posse-open-${Date.now()}.applescript`);
+  writeFileSync(
+    scriptPath,
+    `
+set stamp to do shell script "date +%s"
+set nodeBin to ${JSON.stringify(NODE_BIN)}
+set urlScript to ${JSON.stringify(DEV_URL_SCRIPT)}
+set openUrl to ""
+try
+  set openUrl to do shell script quoted form of nodeBin & " " & quoted form of urlScript
+end try
+if openUrl is "" then
+  return
+end if
+do shell script "/usr/bin/open " & quoted form of (openUrl & "/?v=" & stamp)
+`,
+  );
+  try {
+    run("osacompile", ["-o", APP_DEST, scriptPath]);
+  } finally {
+    rmSync(scriptPath, { force: true });
+  }
   const plist = join(APP_DEST, "Contents", "Info.plist");
   const version = String(Date.now());
   try {
@@ -110,7 +134,7 @@ function syncDesktopIcon({ force = false } = {}) {
     return false;
   }
 
-  const hash = sha(ICON_SRC);
+  const hash = `${sha(ICON_SRC)}:${LAUNCHER_VERSION}`;
   if (!force && existsSync(STAMP) && readFileSync(STAMP, "utf8").trim() === hash) {
     return false;
   }
@@ -165,7 +189,8 @@ function watchIcon() {
   watch(dirname(ICON_SRC), (event, filename) => {
     if (filename === "icon.png") kick();
   });
-  console.log("desktop icon: src/app/icon.png の変更を監視中");
+  watch(SITE_FILE, () => kick());
+  console.log("desktop: アイコンと公開URLの変更を監視中");
 }
 
 const watchMode = process.argv.includes("--watch");

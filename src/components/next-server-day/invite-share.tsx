@@ -69,7 +69,7 @@ export function InviteShare({ roomId }: { roomId: string }) {
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
         {usingPublic
           ? "このリンクを送ると、Wi-Fiが違っても同じ部屋に入れます。"
-          : "公開サイトのURLを待っています。Vercel にデプロイ済みなら APP_URL を設定してください。"}
+          : "同じ公開URLで招待します。開発中の最新は、デスクトップの POSSE からも開けます。"}
       </p>
       <div className="mt-3 flex items-center gap-2">
         <p className="min-w-0 flex-1 truncate rounded-lg bg-muted px-3 py-2 font-mono text-xs text-foreground">

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { findDevUrl } from "./write-dev-url.mjs";
 
 const ORIGIN_PATH = join(process.cwd(), "data", "share-origin.txt");
 const URL_RE = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/i;
@@ -19,9 +20,12 @@ function clearOrigin() {
   }
 }
 
+const local = findDevUrl() || "http://127.0.0.1:3000";
+console.log(`トンネル先: ${local}`);
+
 const child = spawn(
   "npx",
-  ["--yes", "cloudflared", "tunnel", "--url", "http://localhost:3000"],
+  ["--yes", "cloudflared", "tunnel", "--url", local],
   { stdio: ["ignore", "pipe", "pipe"] },
 );
 

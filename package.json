@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "icon:desktop": "node scripts/sync-desktop-icon.mjs --force",
+    "sync": "node scripts/sync-desktop-icon.mjs --force",
     "share": "node scripts/share.mjs",
     "db:migrate": "node --env-file=.env.local scripts/migrate-json-to-db.mjs",
     "build": "next build",

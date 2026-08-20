@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { publicAppOrigin } from "@/lib/site";
 
 type MailConfig = {
   user: string;
@@ -12,12 +13,6 @@ export function getMailConfig(): MailConfig | null {
   return { user, pass };
 }
 
-function appOrigin(request: Request): string {
-  const fromEnv = process.env.APP_URL?.trim().replace(/\/$/, "");
-  if (fromEnv) return fromEnv;
-  return new URL(request.url).origin;
-}
-
 export async function sendResetEmail(
   toEmail: string,
   token: string,
@@ -28,7 +23,7 @@ export async function sendResetEmail(
     throw new Error("Gmail is not configured");
   }
 
-  const link = `${appOrigin(request)}/account/reset?token=${encodeURIComponent(token)}`;
+  const link = `${publicAppOrigin(request.url)}/account/reset?token=${encodeURIComponent(token)}`;
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,

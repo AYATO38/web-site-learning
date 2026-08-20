@@ -26,22 +26,6 @@
 }
 
 .event-theme {
-  --background: #ffffff;
-  --foreground: #171717;
-  --muted: #f3eee6;
-  --muted-foreground: #6f675e;
-  --border: #ece6dc;
-  --accent: #3b9eff;
-  --accent-dark: #1e7ae6;
-  --accent-soft: #e8f3ff;
-  --surface: #f7f4ee;
-  --surface-elevated: #ffffff;
-  --track: #ece6dc;
-  --correct: #3b9eff;
-  --correct-surface: #e8f3ff;
-  --correct-foreground: #1e7ae6;
-  --wrong-surface: #fef2f2;
-  --wrong-foreground: #dc2626;
 }
 
 @theme inline {
@@ -196,4 +180,18 @@ body {
 
 .event-cta:disabled:hover {
   background: var(--muted);
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.mascot-bob {
+  animation: mascot-bob 2.6s ease-in-out infinite;
 }
