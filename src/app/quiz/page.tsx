@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Quiz } from "@/components/quiz";
 import { isLessonComplete, lessons } from "@/lib/lessons";
+import { getQuestionsForLesson } from "@/lib/questions";
 import { Lock } from "lucide-react";
 
 function QuizGate() {
@@ -51,7 +52,12 @@ function QuizGate() {
     );
   }
 
-  return <Quiz lessonTitle={lesson.title} />;
+  return (
+    <Quiz
+      lessonTitle={lesson.title}
+      questions={getQuestionsForLesson(lesson.id)}
+    />
+  );
 }
 
 export default function QuizPage() {

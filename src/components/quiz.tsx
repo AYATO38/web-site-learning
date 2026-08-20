@@ -3,14 +3,20 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { questions } from "@/lib/questions";
+import type { Question } from "@/lib/questions";
 import { ChoiceButton } from "@/components/choice-button";
 import { QuestionBubble } from "@/components/question-bubble";
 import { Check, Heart, X } from "lucide-react";
 
 type Phase = "answering" | "correct" | "wrong";
 
-export function Quiz({ lessonTitle }: { lessonTitle?: string }) {
+export function Quiz({
+  lessonTitle,
+  questions,
+}: {
+  lessonTitle?: string;
+  questions: Question[];
+}) {
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>("answering");
@@ -176,7 +182,7 @@ function Footer({
                 {isCorrect ? "せいかい！" : "ざんねん…"}
               </p>
               <p className="mt-1 text-sm font-semibold leading-relaxed sm:text-base">
-                <span className="font-extrabold">Explanation: </span>
+                <span className="font-extrabold">解説: </span>
                 {explanation}
               </p>
             </div>

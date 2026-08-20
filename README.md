@@ -1,38 +1,37 @@
-# web-site-learning
+# POSSE Learning
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+大学生向けのプログラミング学習アプリです。講義動画、確認クイズ、次サバDAYのチーム対抗クイズをひとつのサイトにまとめています。
 
-## Getting Started
+公開URL: [https://learner-app-rho.vercel.app](https://learner-app-rho.vercel.app)
 
-First, run the development server:
+## できること
+
+- **ホーム** — マスコットの着せ替え、次サバDAYへの導線、レッスン一覧
+- **講義動画** — HTML / CSS、JavaScript、Git の入門動画。視聴完了するとクイズが開きます
+- **確認クイズ** — レッスンごとに内容が違う5問。ライフ制です
+- **次サバDAY** — 部屋を作って招待し、チームで連続正解を競います（HTML / CSS / JS 各3問）
+- **アカウント** — 登録・ログイン・パスワード再設定
+- **ゲーム** — 準備中です
+
+## 開発
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`.env.local` には、メール送信用の Gmail、セッション用の `AUTH_SECRET`、公開URLの `APP_URL`、Neon の `DATABASE_URL` を入れます。JSON ファイルからデータベースへ移すときは `npm run db:migrate` です。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 画面の場所
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| 画面 | パス |
+| --- | --- |
+| ホーム | `/` |
+| 講義動画 | `/video` |
+| 確認クイズ | `/quiz` |
+| 次サバDAY | `/next-server-day` |
+| ゲーム | `/game` |
+| アカウント | `/account` |

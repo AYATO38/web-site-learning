@@ -25,9 +25,6 @@
   --rose: #c9a39a;
 }
 
-.event-theme {
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

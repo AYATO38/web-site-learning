@@ -10,23 +10,23 @@ export const lessons: Lesson[] = [
   {
     id: "html-css",
     title: "HTML / CSS 基礎",
-    description: "Webページの構造とスタイリングの基本を学びます",
-    duration: "12 min",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    description: "ページの骨格と見た目の整え方を学びます",
+    duration: "約12分",
+    videoUrl: "https://www.youtube.com/embed/qz0aGYrrlhU",
   },
   {
     id: "javascript",
     title: "JavaScript 入門",
-    description: "変数・関数・条件分岐を使ったプログラミング",
-    duration: "18 min",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    description: "変数・条件分岐・配列など、動きをつける基本です",
+    duration: "約18分",
+    videoUrl: "https://www.youtube.com/embed/W6NZfCO5SIk",
   },
   {
     id: "git",
     title: "Git & GitHub",
-    description: "バージョン管理とチーム開発の基本ワークフロー",
-    duration: "15 min",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    description: "変更の記録と、チームでコードを共有する流れです",
+    duration: "約15分",
+    videoUrl: "https://www.youtube.com/embed/RGOj5yH7evk",
   },
 ];
 

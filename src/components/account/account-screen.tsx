@@ -13,10 +13,10 @@ import type { PublicUser } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
 const menuItems = [
-  { icon: User, label: "プロフィール", desc: "名前・所属大学" },
-  { icon: BookOpen, label: "学習履歴", desc: "完了したレッスンとスコア" },
-  { icon: Mail, label: "お知らせ", desc: "POSSEからの最新情報" },
-  { icon: Settings, label: "設定", desc: "通知・アカウント設定" },
+  { icon: User, label: "プロフィール", desc: "名前・所属大学（準備中）" },
+  { icon: BookOpen, label: "学習履歴", desc: "完了したレッスンとスコア（準備中）" },
+  { icon: Mail, label: "お知らせ", desc: "POSSEからの最新情報（準備中）" },
+  { icon: Settings, label: "設定", desc: "通知・アカウント設定（準備中）" },
 ];
 
 const inputClass =
@@ -113,7 +113,8 @@ export function AccountScreen() {
                 <button
                   key={item.label}
                   type="button"
-                  className="flex w-full items-center gap-4 rounded-xl border border-border bg-surface-elevated p-4 text-left"
+                  disabled
+                  className="flex w-full cursor-not-allowed items-center gap-4 rounded-xl border border-border bg-surface-elevated p-4 text-left opacity-70"
                 >
                   <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-foreground">
                     <Icon className="size-5" />

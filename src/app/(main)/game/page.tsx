@@ -9,7 +9,7 @@ export default function GamePage() {
           ゲームで遊ぼう
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          タイピングゲームやコード間違い探しを準備中
+          タイピングゲームやコード間違い探しを準備中です
         </p>
       </header>
 
@@ -25,7 +25,7 @@ export default function GamePage() {
             </p>
           </div>
           <div className="rounded-full bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">
-            COMING SOON
+            準備中
           </div>
         </article>
 
@@ -40,7 +40,7 @@ export default function GamePage() {
             </p>
           </div>
           <div className="rounded-full bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">
-            COMING SOON
+            準備中
           </div>
         </article>
       </section>
