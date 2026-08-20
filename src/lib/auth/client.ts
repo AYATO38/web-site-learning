@@ -1,4 +1,7 @@
 import type { PublicUser } from "@/lib/auth/types";
+import type { MascotOutfit } from "@/lib/mascot";
+
+export const AUTH_EVENT = "posse-auth-changed";
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
   return (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -74,6 +77,24 @@ export async function resetPassword(input: {
   const body = await readJson(res);
   if (!res.ok) {
     throw new Error(errorMessage(body, "パスワードの再設定に失敗しました"));
+  }
+  return body.user as PublicUser;
+}
+
+export function notifyAuthChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_EVENT));
+}
+
+export async function saveAccountOutfit(outfit: MascotOutfit): Promise<PublicUser> {
+  const res = await fetch("/api/auth/outfit", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ outfit }),
+  });
+  const body = await readJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessage(body, "キャラクターを保存できませんでした"));
   }
   return body.user as PublicUser;
 }

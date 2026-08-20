@@ -211,6 +211,10 @@ export const personalityPresets: {
 
 const STORAGE_KEY = "posse-mascot-outfit";
 
+export function outfitStorageKey(userId?: string | null) {
+  return userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY;
+}
+
 function ids<T extends { id: string }>(list: readonly T[]): T["id"][] {
   return list.map((item) => item.id);
 }
@@ -237,20 +241,25 @@ export function normalizeOutfit(raw: unknown): MascotOutfit {
   };
 }
 
-export function loadOutfit(): MascotOutfit {
+export function loadOutfit(userId?: string | null): MascotOutfit {
   if (typeof window === "undefined") return defaultOutfit;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(outfitStorageKey(userId));
     return raw ? normalizeOutfit(JSON.parse(raw)) : defaultOutfit;
   } catch {
     return defaultOutfit;
   }
 }
 
-export function saveOutfit(outfit: MascotOutfit): void {
+export function hasStoredOutfit(userId: string): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(localStorage.getItem(outfitStorageKey(userId)));
+}
+
+export function saveOutfit(outfit: MascotOutfit, userId?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(outfit));
+    localStorage.setItem(outfitStorageKey(userId), JSON.stringify(outfit));
   } catch {
     /* Safari のプライベートブラウズなど */
   }

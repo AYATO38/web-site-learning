@@ -9,9 +9,11 @@ import {
   glassesOptions,
   hairColors,
   hairStyles,
+  hasStoredOutfit,
   hatOptions,
   loadOutfit,
   mouthOptions,
+  normalizeOutfit,
   personalityPresets,
   randomOutfit,
   saveOutfit,
@@ -20,6 +22,11 @@ import {
   type MascotOutfit,
 } from "@/lib/mascot";
 import { MascotSvg } from "@/components/home/mascot-svg";
+import {
+  AUTH_EVENT,
+  fetchMe,
+  saveAccountOutfit,
+} from "@/lib/auth/client";
 import { ChevronLeft, ChevronRight, Dices, Shirt, Sparkles } from "lucide-react";
 
 function wrapYaw(value: number) {
@@ -129,7 +136,10 @@ export function MascotCharacter() {
   const [yaw, setYaw] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [hasTurned, setHasTurned] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
   const yawRef = useRef(0);
+  const userIdRef = useRef<string | null>(null);
+  const saveTimer = useRef<number | undefined>(undefined);
   const drag = useRef<{
     x: number;
     yaw: number;
@@ -143,13 +153,61 @@ export function MascotCharacter() {
   yawRef.current = yaw;
 
   useEffect(() => {
-    setOutfit(loadOutfit());
+    let cancelled = false;
+
+    async function syncFromAccount() {
+      const user = await fetchMe().catch(() => null);
+      if (cancelled) return;
+      userIdRef.current = user?.id ?? null;
+      setLoggedIn(Boolean(user));
+
+      if (!user) {
+        setOutfit(loadOutfit());
+        return;
+      }
+
+      if (user.outfit) {
+        const next = normalizeOutfit(user.outfit);
+        setOutfit(next);
+        saveOutfit(next, user.id);
+        return;
+      }
+
+      const seed = hasStoredOutfit(user.id) ? loadOutfit(user.id) : loadOutfit();
+      setOutfit(seed);
+      saveOutfit(seed, user.id);
+      void saveAccountOutfit(seed).catch(() => {
+        /* keep local copy */
+      });
+    }
+
+    void syncFromAccount();
+    function onAuthChanged() {
+      void syncFromAccount();
+    }
+    window.addEventListener(AUTH_EVENT, onAuthChanged);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(AUTH_EVENT, onAuthChanged);
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    };
   }, []);
+
+  function persistOutfit(next: MascotOutfit) {
+    saveOutfit(next, userIdRef.current);
+    if (!userIdRef.current) return;
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      void saveAccountOutfit(next).catch(() => {
+        /* keep local copy */
+      });
+    }, 450);
+  }
 
   function updateOutfit(patch: Partial<MascotOutfit>) {
     const next = { ...outfit, ...patch };
     setOutfit(next);
-    saveOutfit(next);
+    persistOutfit(next);
   }
 
   function openMenu() {
@@ -364,6 +422,11 @@ export function MascotCharacter() {
               おまかせ
             </button>
           </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {loggedIn
+              ? "このキャラクターはアカウントに保存されます"
+              : "ログインすると、別の端末でも同じキャラを使えます"}
+          </p>
 
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground">

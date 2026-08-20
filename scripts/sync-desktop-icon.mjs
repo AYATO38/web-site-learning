@@ -20,10 +20,8 @@ const ICON_PUBLIC = join(ROOT, "public", "icon.png");
 const DESKTOP = join(homedir(), "Desktop");
 const PNG_DEST = join(DESKTOP, "POSSE.png");
 const APP_DEST = join(DESKTOP, "POSSE.app");
-const LAUNCHER_VERSION = "linked-origin-1";
+const LAUNCHER_VERSION = "production-url-1";
 const STAMP = join(ROOT, ".next", "desktop-icon.sha");
-const NODE_BIN = process.execPath;
-const DEV_URL_SCRIPT = join(ROOT, "scripts", "write-dev-url.mjs");
 const SITE_FILE = join(ROOT, "site.config.json");
 
 function sha(path) {
@@ -79,22 +77,23 @@ function buildIcns(srcPng) {
   return { dir, icns };
 }
 
+function productionUrlFromConfig() {
+  try {
+    const site = JSON.parse(readFileSync(SITE_FILE, "utf8"));
+    return String(site.productionUrl ?? "").replace(/\/$/, "");
+  } catch {
+    return "https://learner-app-rho.vercel.app";
+  }
+}
+
 function ensureApp() {
+  const openUrl = productionUrlFromConfig();
   const scriptPath = join(tmpdir(), `posse-open-${Date.now()}.applescript`);
   writeFileSync(
     scriptPath,
     `
 set stamp to do shell script "date +%s"
-set nodeBin to ${JSON.stringify(NODE_BIN)}
-set urlScript to ${JSON.stringify(DEV_URL_SCRIPT)}
-set openUrl to ""
-try
-  set openUrl to do shell script quoted form of nodeBin & " " & quoted form of urlScript
-end try
-if openUrl is "" then
-  return
-end if
-do shell script "/usr/bin/open " & quoted form of (openUrl & "/?v=" & stamp)
+do shell script "/usr/bin/open " & quoted form of (${JSON.stringify(openUrl)} & "/?v=" & stamp)
 `,
   );
   try {

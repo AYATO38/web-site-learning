@@ -40,6 +40,9 @@ await sql.query(`
     updated_at BIGINT NOT NULL
   )
 `);
+await sql.query(`
+  ALTER TABLE accounts ADD COLUMN IF NOT EXISTS outfit JSONB
+`);
 
 const accountsFile = readJson("accounts.json");
 const accounts = Array.isArray(accountsFile?.accounts) ? accountsFile.accounts : [];

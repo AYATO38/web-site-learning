@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { Account } from "@/lib/auth/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createResetToken, hashResetToken } from "@/lib/auth/reset-token";
+import { normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 
 const RESET_TTL_MS = 30 * 60 * 1000;
 const RESET_COOLDOWN_MS = 60 * 1000;
@@ -146,6 +147,20 @@ export async function resetPasswordWithToken(
     account.passwordHash = await hashPassword(password);
     account.resetTokenHash = null;
     account.resetTokenExpiresAt = null;
+    writeStore(store);
+    return account;
+  });
+}
+
+export async function updateAccountOutfit(
+  userId: string,
+  outfit: MascotOutfit,
+): Promise<Account | undefined> {
+  return withLock(() => {
+    const store = readStore();
+    const account = store.accounts.find((item) => item.id === userId);
+    if (!account) return undefined;
+    account.outfit = normalizeOutfit(outfit);
     writeStore(store);
     return account;
   });

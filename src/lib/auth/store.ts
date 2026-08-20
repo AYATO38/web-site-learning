@@ -1,5 +1,6 @@
 import { hasDatabaseUrl } from "@/lib/db";
 import type { Account } from "@/lib/auth/types";
+import type { MascotOutfit } from "@/lib/mascot";
 import * as jsonStore from "@/lib/auth/store-json";
 import * as pgStore from "@/lib/auth/store-pg";
 
@@ -49,4 +50,11 @@ export async function resetPasswordWithToken(
   password: string,
 ): Promise<Account | "invalid" | "same_password"> {
   return backend().resetPasswordWithToken(rawToken, password);
+}
+
+export async function updateAccountOutfit(
+  userId: string,
+  outfit: MascotOutfit,
+): Promise<Account | undefined> {
+  return backend().updateAccountOutfit(userId, outfit);
 }

@@ -1,3 +1,5 @@
+import type { MascotOutfit } from "@/lib/mascot";
+
 export type Account = {
   id: string;
   name: string;
@@ -8,6 +10,7 @@ export type Account = {
   resetTokenHash?: string | null;
   resetTokenExpiresAt?: number | null;
   lastResetRequestedAt?: number | null;
+  outfit?: MascotOutfit | null;
 };
 
 export type PublicUser = {
@@ -16,6 +19,7 @@ export type PublicUser = {
   email: string;
   university: string | null;
   createdAt: string;
+  outfit: MascotOutfit | null;
 };
 
 export function toPublicUser(account: Account): PublicUser {
@@ -25,5 +29,6 @@ export function toPublicUser(account: Account): PublicUser {
     email: account.email,
     university: account.university,
     createdAt: account.createdAt,
+    outfit: account.outfit ?? null,
   };
 }

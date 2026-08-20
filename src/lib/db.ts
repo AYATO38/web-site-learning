@@ -60,6 +60,9 @@ export async function ensureDb(): Promise<Sql> {
       await sql.query(`
         CREATE INDEX IF NOT EXISTS rooms_updated_at_idx ON rooms (updated_at)
       `);
+      await sql.query(`
+        ALTER TABLE accounts ADD COLUMN IF NOT EXISTS outfit JSONB
+      `);
     })();
   }
   await schemaReady;

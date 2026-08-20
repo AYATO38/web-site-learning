@@ -6,10 +6,13 @@ import {
   fetchMe,
   loginAccount,
   logoutAccount,
+  notifyAuthChanged,
   registerAccount,
   requestPasswordReset,
 } from "@/lib/auth/client";
 import type { PublicUser } from "@/lib/auth/types";
+import { MascotSvg } from "@/components/home/mascot-svg";
+import { normalizeOutfit } from "@/lib/mascot";
 import { cn } from "@/lib/utils";
 
 const menuItems = [
@@ -68,6 +71,7 @@ export function AccountScreen() {
           : await loginAccount({ email, password });
       setUser(next);
       setPassword("");
+      notifyAuthChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "処理に失敗しました");
     } finally {
@@ -79,6 +83,7 @@ export function AccountScreen() {
     setBusy(true);
     await logoutAccount();
     setUser(null);
+    notifyAuthChanged();
     setBusy(false);
   }
 
@@ -94,8 +99,19 @@ export function AccountScreen() {
       ) : user ? (
         <>
           <div className="mb-6 flex items-center gap-4 rounded-2xl border border-border bg-surface-elevated p-5">
-            <div className="flex size-16 items-center justify-center rounded-full bg-accent-soft text-xl font-extrabold text-accent">
-              {user.name.slice(0, 1)}
+            <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-accent-soft to-white ring-2 ring-accent/15">
+              {user.outfit ? (
+                <div className="h-16 w-14">
+                  <MascotSvg
+                    outfit={normalizeOutfit(user.outfit)}
+                    view="front"
+                  />
+                </div>
+              ) : (
+                <span className="text-xl font-extrabold text-accent">
+                  {user.name.slice(0, 1)}
+                </span>
+              )}
             </div>
             <div className="min-w-0">
               <p className="font-bold text-foreground">{user.name}</p>

@@ -64,7 +64,7 @@ export function findDevUrl() {
 }
 
 export function openAppUrl() {
-  return findDevUrl() || productionUrl();
+  return productionUrl();
 }
 
 export function writeDevUrl(url = findDevUrl()) {

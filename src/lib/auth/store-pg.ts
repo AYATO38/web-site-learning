@@ -3,6 +3,7 @@ import type { Account } from "@/lib/auth/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createResetToken, hashResetToken } from "@/lib/auth/reset-token";
 import { asUniqueViolation, ensureDb } from "@/lib/db";
+import { normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 
 const RESET_TTL_MS = 30 * 60 * 1000;
 const RESET_COOLDOWN_MS = 60 * 1000;
@@ -17,6 +18,7 @@ type AccountRow = {
   reset_token_hash: string | null;
   reset_token_expires_at: string | number | null;
   last_reset_requested_at: string | number | null;
+  outfit: unknown;
 };
 
 function toNumber(value: string | number | null): number | null {
@@ -36,6 +38,7 @@ function mapAccount(row: AccountRow): Account {
     resetTokenHash: row.reset_token_hash,
     resetTokenExpiresAt: toNumber(row.reset_token_expires_at),
     lastResetRequestedAt: toNumber(row.last_reset_requested_at),
+    outfit: row.outfit == null ? null : normalizeOutfit(row.outfit),
   };
 }
 
@@ -169,4 +172,19 @@ export async function resetPasswordWithToken(
     WHERE id = ${account.id}
   `;
   return { ...account, passwordHash, resetTokenHash: null, resetTokenExpiresAt: null };
+}
+
+export async function updateAccountOutfit(
+  userId: string,
+  outfit: MascotOutfit,
+): Promise<Account | undefined> {
+  const sql = await ensureDb();
+  const next = normalizeOutfit(outfit);
+  const rows = (await sql`
+    UPDATE accounts
+    SET outfit = ${JSON.stringify(next)}::jsonb
+    WHERE id = ${userId}
+    RETURNING *
+  `) as AccountRow[];
+  return rows[0] ? mapAccount(rows[0]) : undefined;
 }
