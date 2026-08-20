@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Account } from "@/lib/auth/types";
+import type { Account, ProfilePatch } from "@/lib/auth/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createResetToken, hashResetToken } from "@/lib/auth/reset-token";
 import { asUniqueViolation, ensureDb } from "@/lib/db";
@@ -13,6 +13,8 @@ type AccountRow = {
   name: string;
   email: string;
   university: string | null;
+  faculty: string | null;
+  department: string | null;
   password_hash: string;
   created_at: string;
   reset_token_hash: string | null;
@@ -33,6 +35,8 @@ function mapAccount(row: AccountRow): Account {
     name: row.name,
     email: row.email,
     university: row.university,
+    faculty: row.faculty ?? null,
+    department: row.department ?? null,
     passwordHash: row.password_hash,
     createdAt: row.created_at,
     resetTokenHash: row.reset_token_hash,
@@ -65,7 +69,9 @@ export type CreateAccountInput = {
   name: string;
   email: string;
   password: string;
-  university?: string | null;
+  university: string;
+  faculty: string;
+  department: string;
 };
 
 export async function createAccount(
@@ -77,7 +83,9 @@ export async function createAccount(
     id: randomUUID(),
     name: input.name.trim(),
     email,
-    university: input.university?.trim() || null,
+    university: input.university.trim(),
+    faculty: input.faculty.trim(),
+    department: input.department.trim(),
     passwordHash: await hashPassword(input.password),
     createdAt: new Date().toISOString(),
   };
@@ -85,12 +93,14 @@ export async function createAccount(
   try {
     await sql`
       INSERT INTO accounts (
-        id, name, email, university, password_hash, created_at
+        id, name, email, university, faculty, department, password_hash, created_at
       ) VALUES (
         ${account.id},
         ${account.name},
         ${account.email},
         ${account.university},
+        ${account.faculty},
+        ${account.department},
         ${account.passwordHash},
         ${account.createdAt}
       )
@@ -183,6 +193,32 @@ export async function updateAccountOutfit(
   const rows = (await sql`
     UPDATE accounts
     SET outfit = ${JSON.stringify(next)}::jsonb
+    WHERE id = ${userId}
+    RETURNING *
+  `) as AccountRow[];
+  return rows[0] ? mapAccount(rows[0]) : undefined;
+}
+
+export async function updateAccountProfile(
+  userId: string,
+  patch: ProfilePatch,
+): Promise<Account | undefined> {
+  const sql = await ensureDb();
+  const account = await findAccountById(userId);
+  if (!account) return undefined;
+
+  const name = patch.name ?? account.name;
+  const university = patch.university ?? account.university;
+  const faculty = patch.faculty ?? account.faculty;
+  const department = patch.department ?? account.department;
+
+  const rows = (await sql`
+    UPDATE accounts
+    SET
+      name = ${name},
+      university = ${university},
+      faculty = ${faculty},
+      department = ${department}
     WHERE id = ${userId}
     RETURNING *
   `) as AccountRow[];

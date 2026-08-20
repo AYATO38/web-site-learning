@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Account } from "@/lib/auth/types";
+import type { Account, ProfilePatch } from "@/lib/auth/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createResetToken, hashResetToken } from "@/lib/auth/reset-token";
 import { normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
@@ -60,7 +60,9 @@ export type CreateAccountInput = {
   name: string;
   email: string;
   password: string;
-  university?: string | null;
+  university: string;
+  faculty: string;
+  department: string;
 };
 
 export async function createAccount(
@@ -77,7 +79,9 @@ export async function createAccount(
       id: randomUUID(),
       name: input.name.trim(),
       email,
-      university: input.university?.trim() || null,
+      university: input.university.trim(),
+      faculty: input.faculty.trim(),
+      department: input.department.trim(),
       passwordHash: await hashPassword(input.password),
       createdAt: new Date().toISOString(),
     };
@@ -161,6 +165,23 @@ export async function updateAccountOutfit(
     const account = store.accounts.find((item) => item.id === userId);
     if (!account) return undefined;
     account.outfit = normalizeOutfit(outfit);
+    writeStore(store);
+    return account;
+  });
+}
+
+export async function updateAccountProfile(
+  userId: string,
+  patch: ProfilePatch,
+): Promise<Account | undefined> {
+  return withLock(() => {
+    const store = readStore();
+    const account = store.accounts.find((item) => item.id === userId);
+    if (!account) return undefined;
+    if (patch.name !== undefined) account.name = patch.name;
+    if (patch.university !== undefined) account.university = patch.university;
+    if (patch.faculty !== undefined) account.faculty = patch.faculty;
+    if (patch.department !== undefined) account.department = patch.department;
     writeStore(store);
     return account;
   });

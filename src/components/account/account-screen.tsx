@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { BookOpen, LogOut, Mail, Settings, User } from "lucide-react";
+import { BookOpen, ChevronRight, LogOut, Mail, Settings, User } from "lucide-react";
 import {
+  AUTH_EVENT,
   fetchMe,
   loginAccount,
   logoutAccount,
@@ -10,13 +11,14 @@ import {
   registerAccount,
   requestPasswordReset,
 } from "@/lib/auth/client";
-import type { PublicUser } from "@/lib/auth/types";
+import { affiliationLines, type PublicUser } from "@/lib/auth/types";
+import { ProfileFieldInputs } from "@/components/account/profile-field-inputs";
+import { ProfileEditor } from "@/components/account/profile-editor";
 import { MascotSvg } from "@/components/home/mascot-svg";
 import { normalizeOutfit } from "@/lib/mascot";
 import { cn } from "@/lib/utils";
 
 const menuItems = [
-  { icon: User, label: "プロフィール", desc: "名前・所属大学（準備中）" },
   { icon: BookOpen, label: "学習履歴", desc: "完了したレッスンとスコア（準備中）" },
   { icon: Mail, label: "お知らせ", desc: "POSSEからの最新情報（準備中）" },
   { icon: Settings, label: "設定", desc: "通知・アカウント設定（準備中）" },
@@ -37,21 +39,32 @@ export function AccountScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [university, setUniversity] = useState("");
+  const [faculty, setFaculty] = useState("");
+  const [department, setDepartment] = useState("");
+  const [panel, setPanel] = useState<"menu" | "profile">("menu");
 
   useEffect(() => {
     let cancelled = false;
-    void fetchMe()
-      .then((next) => {
-        if (!cancelled) setUser(next);
-      })
-      .catch(() => {
+
+    async function load() {
+      try {
+        const next = await fetchMe();
+        if (!cancelled) {
+          setUser(next);
+          if (!next) setPanel("menu");
+        }
+      } catch {
         if (!cancelled) setUser(null);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    void load();
+    window.addEventListener(AUTH_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(AUTH_EVENT, load);
     };
   }, []);
 
@@ -67,7 +80,14 @@ export function AccountScreen() {
       }
       const next =
         mode === "signup"
-          ? await registerAccount({ name, email, password, university })
+          ? await registerAccount({
+              name,
+              email,
+              password,
+              university,
+              faculty,
+              department,
+            })
           : await loginAccount({ email, password });
       setUser(next);
       setPassword("");
@@ -83,19 +103,28 @@ export function AccountScreen() {
     setBusy(true);
     await logoutAccount();
     setUser(null);
+    setPanel("menu");
     notifyAuthChanged();
     setBusy(false);
   }
 
   return (
     <div className="mx-auto w-full max-w-lg flex-1 px-4 pb-36 pt-10">
-      <header className="mb-8">
-        <p className="section-en">Account</p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight">アカウント</h1>
-      </header>
+      {!(user && panel === "profile") ? (
+        <header className="mb-8">
+          <p className="section-en">Account</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight">アカウント</h1>
+        </header>
+      ) : null}
 
       {loading ? (
         <p className="text-sm font-semibold text-muted-foreground">読み込み中...</p>
+      ) : user && panel === "profile" ? (
+        <ProfileEditor
+          user={user}
+          onUpdated={setUser}
+          onBack={() => setPanel("menu")}
+        />
       ) : user ? (
         <>
           <div className="mb-6 flex items-center gap-4 rounded-2xl border border-border bg-surface-elevated p-5">
@@ -116,13 +145,33 @@ export function AccountScreen() {
             <div className="min-w-0">
               <p className="font-bold text-foreground">{user.name}</p>
               <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-              <p className="text-sm text-muted-foreground">
-                {user.university || "POSSE メンバー"}
-              </p>
+              {affiliationLines(user).map((line) => (
+                <p key={line} className="text-sm text-muted-foreground">
+                  {line}
+                </p>
+              ))}
             </div>
           </div>
 
           <div className="mb-6 space-y-2">
+            <button
+              type="button"
+              onClick={() => setPanel("profile")}
+              className="flex w-full items-center gap-4 rounded-xl border border-border bg-surface-elevated p-4 text-left"
+            >
+              <span className="flex size-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                <User className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-foreground">
+                  プロフィール
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  名前・大学・学部・学科を編集
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+            </button>
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -244,18 +293,14 @@ export function AccountScreen() {
                     className={inputClass}
                   />
                 </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-bold text-muted-foreground">
-                    大学（任意）
-                  </span>
-                  <input
-                    type="text"
-                    value={university}
-                    onChange={(e) => setUniversity(e.target.value)}
-                    maxLength={80}
-                    className={inputClass}
-                  />
-                </label>
+                <ProfileFieldInputs
+                  values={{ university, faculty, department }}
+                  onChange={(key, value) => {
+                    if (key === "university") setUniversity(value);
+                    if (key === "faculty") setFaculty(value);
+                    if (key === "department") setDepartment(value);
+                  }}
+                />
               </>
             )}
 

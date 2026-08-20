@@ -130,10 +130,114 @@ const gitQuestions: Question[] = [
   },
 ];
 
+const reactQuestions: Question[] = [
+  {
+    prompt: "Reactで画面の部品になる関数を何と呼びますか？",
+    choices: ["コンポーネント", "サーバー", "データベース", "クッキー"],
+    answerIndex: 0,
+    explanation:
+      "UIの部品をコンポーネントと呼びます。小さな部品を組み合わせて画面を作ります。",
+  },
+  {
+    prompt: "状態を持つときに使うフックはどれ？",
+    code: "const [count, setCount] = ???(0);",
+    choices: ["useEffect", "useState", "useRef", "useMemo"],
+    answerIndex: 1,
+    explanation: "useState は値と、それを更新する関数をセットで返します。",
+  },
+  {
+    prompt: "親から子へデータを渡すときに使うものはどれ？",
+    choices: ["props", "cookie", "SQL", "DNS"],
+    answerIndex: 0,
+    explanation:
+      "props は親コンポーネントから子へ渡すデータです。",
+  },
+];
+
+const webQuestions: Question[] = [
+  {
+    prompt: "ブラウザに表示する文書の骨格を書く言語はどれ？",
+    choices: ["HTML", "SQL", "JSON", "Python"],
+    answerIndex: 0,
+    explanation: "HTML はページの構造を表します。CSS が見た目、JavaScript が動きです。",
+  },
+  {
+    prompt: "見た目（色や配置）を指定する言語はどれ？",
+    choices: ["HTML", "CSS", "Git", "HTTP"],
+    answerIndex: 1,
+    explanation: "CSS は色・余白・レイアウトなど見た目を担当します。",
+  },
+  {
+    prompt: "サイトの住所にあたるものはどれ？",
+    choices: ["URL", "CPU", "RAM", "PDF"],
+    answerIndex: 0,
+    explanation: "URL はページの場所を示すアドレスです。",
+  },
+];
+
+const flexQuestions: Question[] = [
+  {
+    prompt: "Flexboxで子要素を横並びにしやすくする display の値はどれ？",
+    choices: ["block", "none", "flex", "hidden"],
+    answerIndex: 2,
+    explanation: "display: flex にすると子要素を並べやすくなります。",
+  },
+  {
+    prompt: "主軸方向の中央揃えに使うプロパティはどれ？",
+    choices: [
+      "justify-content: center",
+      "color: center",
+      "font-size: center",
+      "display: none",
+    ],
+    answerIndex: 0,
+    explanation:
+      "justify-content: center は主軸（通常は横）の中央揃えです。",
+  },
+  {
+    prompt: "交差軸方向の中央揃えに使うプロパティはどれ？",
+    choices: [
+      "align-items: center",
+      "text-decoration: center",
+      "z-index: center",
+      "opacity: center",
+    ],
+    answerIndex: 0,
+    explanation: "align-items: center は交差軸（通常は縦）の中央揃えです。",
+  },
+];
+
+const terminalQuestions: Question[] = [
+  {
+    prompt: "いまいるフォルダの中身を見るコマンドはどれ？",
+    choices: ["ls", "cd", "git push", "npm"],
+    answerIndex: 0,
+    explanation: "ls は一覧表示、cd はフォルダ移動です。",
+  },
+  {
+    prompt: "フォルダを移動するコマンドはどれ？",
+    choices: ["ls", "cd", "rm", "cat"],
+    answerIndex: 1,
+    explanation: "cd は change directory の略で、作業フォルダを変えます。",
+  },
+  {
+    prompt: "ひとつ上のフォルダへ戻る指定はどれ？",
+    code: "cd ???",
+    choices: ["..", "/", "home", "back"],
+    answerIndex: 0,
+    explanation: ".. は親フォルダを意味します。",
+  },
+];
+
 const questionsByLesson: Record<string, Question[]> = {
   "html-css": htmlCssQuestions,
+  "web-basics": webQuestions,
+  css: htmlCssQuestions,
+  flexbox: flexQuestions,
   javascript: javascriptQuestions,
+  react: reactQuestions,
   git: gitQuestions,
+  terminal: terminalQuestions,
 };
 
 export function getQuestionsForLesson(lessonId: string): Question[] {

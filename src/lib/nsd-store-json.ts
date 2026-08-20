@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { normalizeTimeLimit } from "@/lib/next-server-day";
 import type {
   Room,
   TeamMember,
@@ -33,6 +34,13 @@ function emptyStore(): StoreFile {
 function pruneRooms(rooms: Room[]): Room[] {
   const cutoff = Date.now() - ROOM_TTL_MS;
   return rooms.filter((room) => room.updatedAt >= cutoff);
+}
+
+function normalizeRoom(room: Room): Room {
+  return {
+    ...room,
+    timeLimitSeconds: normalizeTimeLimit(room.timeLimitSeconds),
+  };
 }
 
 function readStore(): StoreFile {
@@ -95,10 +103,14 @@ function emptyMember(id: string, name: string): TeamMember {
 
 export async function getRoom(id: string): Promise<Room | undefined> {
   const code = id.toUpperCase();
-  return readStore().rooms.find((room) => room.id === code);
+  const room = readStore().rooms.find((item) => item.id === code);
+  return room ? normalizeRoom(room) : undefined;
 }
 
-export async function createRoom(teamNames: string[]): Promise<Room> {
+export async function createRoom(
+  teamNames: string[],
+  timeLimitSeconds: number | null = null,
+): Promise<Room> {
   return withLock(() => {
     const store = readStore();
     const existing = new Set(store.rooms.map((room) => room.id));
@@ -107,6 +119,7 @@ export async function createRoom(teamNames: string[]): Promise<Room> {
       id: createRoomId(existing),
       teams: teamNames.map(emptyTeam),
       updatedAt: now,
+      timeLimitSeconds: normalizeTimeLimit(timeLimitSeconds),
     };
     store.rooms.push(room);
     writeStore(store);
@@ -160,6 +173,6 @@ export async function patchTeam(
     team.updatedAt = now;
     room.updatedAt = now;
     writeStore(store);
-    return room;
+    return normalizeRoom(room);
   });
 }

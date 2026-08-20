@@ -63,6 +63,15 @@ export async function ensureDb(): Promise<Sql> {
       await sql.query(`
         ALTER TABLE accounts ADD COLUMN IF NOT EXISTS outfit JSONB
       `);
+      await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS time_limit_seconds INTEGER
+      `);
+      await sql.query(`
+        ALTER TABLE accounts ADD COLUMN IF NOT EXISTS faculty TEXT
+      `);
+      await sql.query(`
+        ALTER TABLE accounts ADD COLUMN IF NOT EXISTS department TEXT
+      `);
     })();
   }
   await schemaReady;

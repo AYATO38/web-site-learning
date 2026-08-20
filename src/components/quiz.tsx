@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import type { Question } from "@/lib/questions";
 import { ChoiceButton } from "@/components/choice-button";
 import { QuestionBubble } from "@/components/question-bubble";
-import { Check, Heart, X } from "lucide-react";
+import { playWrongSfx } from "@/lib/sfx";
+import { Check, Heart, RotateCcw, X } from "lucide-react";
 
 type Phase = "answering" | "correct" | "wrong";
 
@@ -35,7 +36,10 @@ export function Quiz({
     if (selected === null) return;
     const isCorrect = selected === question.answerIndex;
     setPhase(isCorrect ? "correct" : "wrong");
-    if (!isCorrect) setHearts((h) => Math.max(0, h - 1));
+    if (!isCorrect) {
+      setHearts((h) => Math.max(0, h - 1));
+      void playWrongSfx();
+    }
   }
 
   function handleContinue() {
@@ -65,44 +69,66 @@ export function Quiz({
 
   if (finished) {
     return (
-      <ResultScreen total={total} hearts={hearts} onRestart={handleRestart} />
+      <ResultScreen
+        lessonTitle={lessonTitle}
+        total={total}
+        hearts={hearts}
+        onRestart={handleRestart}
+      />
     );
   }
 
   return (
-    <main className="quiz-play flex min-h-dvh flex-col">
-      <header className="mx-auto flex w-full max-w-2xl items-center gap-4 px-4 py-5 sm:px-6">
-        <Link
-          href="/"
-          aria-label="ホームに戻る"
-          className="flex size-10 items-center justify-center rounded-full border border-border bg-surface-elevated text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <X className="size-6" strokeWidth={3} />
-        </Link>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-          <div
-            role="progressbar"
-            aria-valuenow={Math.round(progress)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="学習の進捗"
-            className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
-            style={{ width: `${Math.max(progress, 6)}%` }}
-          />
+    <main className="quiz-play relative flex min-h-dvh flex-col text-foreground">
+      <span className="event-glow pointer-events-none" aria-hidden />
+      <header className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-5 sm:px-5">
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="min-w-0">
+            {lessonTitle ? (
+              <p className="truncate rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground">
+                {lessonTitle}
+              </p>
+            ) : (
+              <p className="section-en">Quiz</p>
+            )}
+            <h2 className="mt-2 text-lg font-black tracking-tight">クイズ</h2>
+          </div>
+          <Link
+            href="/"
+            aria-label="ホームに戻る"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-white text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X className="size-6" strokeWidth={3} />
+          </Link>
         </div>
-        <div className="flex items-center gap-1 rounded-full border border-border bg-surface-elevated px-2.5 py-1 font-semibold text-wrong">
-          <Heart className="size-5 fill-wrong text-wrong" />
-          <span className="text-lg tabular-nums">{hearts}</span>
+        <div className="flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              role="progressbar"
+              aria-valuenow={Math.round(progress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="学習の進捗"
+              className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
+              style={{ width: `${Math.max(progress, 6)}%` }}
+            />
+          </div>
+          <div className="flex items-center gap-1 rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-sm font-semibold text-wrong">
+            <Heart className="size-4 fill-wrong text-wrong" />
+            <span className="tabular-nums">{hearts}</span>
+          </div>
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-40 pt-2 sm:px-6">
-        <p className="text-sm font-bold text-accent">
-          {lessonTitle ? `${lessonTitle} · ` : ""}もんだい {current + 1} / {total}
-        </p>
+      <section className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pb-40 sm:px-5">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-muted-foreground">
+            もんだい {current + 1} / {total}
+          </p>
+        </div>
         <QuestionBubble prompt={question.prompt} code={question.code} />
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <div className="mt-6 grid gap-3">
           {question.choices.map((choice, index) => (
             <ChoiceButton
               key={choice}
@@ -151,24 +177,23 @@ function Footer({
   return (
     <footer
       className={cn(
-        "fixed inset-x-0 bottom-0 border-t border-border bg-background transition-colors duration-200",
-        !isFeedback && "bg-background/95",
-        isCorrect && "bg-correct-surface",
-        phase === "wrong" && "bg-wrong-surface",
+        "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl transition-colors duration-200",
+        isCorrect && "border-correct/30 bg-correct-surface",
+        phase === "wrong" && "border-wrong/30 bg-wrong-surface",
       )}
     >
-      <div className="mx-auto w-full max-w-2xl px-4 py-5 sm:px-6">
+      <div className="mx-auto w-full max-w-lg px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-5">
         {isFeedback && (
           <div
             className={cn(
               "mb-4 flex items-start gap-3",
-              isCorrect ? "text-correct-foreground" : "text-wrong-foreground",
+              isCorrect ? "text-accent" : "text-wrong",
             )}
           >
             <span
               className={cn(
                 "flex size-9 shrink-0 items-center justify-center rounded-full",
-                isCorrect ? "bg-correct text-white" : "bg-wrong text-white",
+                isCorrect ? "bg-accent text-white" : "bg-wrong text-white",
               )}
             >
               {isCorrect ? (
@@ -178,10 +203,10 @@ function Footer({
               )}
             </span>
             <div>
-              <p className="text-lg font-extrabold">
-                {isCorrect ? "せいかい！" : "ざんねん…"}
+              <p className="text-lg font-extrabold leading-snug">
+                {isCorrect ? "正解です！" : "不正解です"}
               </p>
-              <p className="mt-1 text-sm font-semibold leading-relaxed sm:text-base">
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground sm:text-base">
                 <span className="font-extrabold">解説: </span>
                 {explanation}
               </p>
@@ -221,32 +246,60 @@ function Footer({
 }
 
 function ResultScreen({
+  lessonTitle,
   total,
   hearts,
   onRestart,
 }: {
+  lessonTitle?: string;
   total: number;
   hearts: number;
   onRestart: () => void;
 }) {
   return (
-    <main className="quiz-play flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
-      <span className="flex size-24 items-center justify-center rounded-full border border-border bg-surface-elevated text-4xl">
-        🎉
-      </span>
-      <div>
-        <h1 className="text-3xl font-black tracking-tight">レッスン完了！</h1>
-        <p className="mt-2 font-semibold text-muted-foreground">
-          {total} 問中クリア · 残りライフ {hearts}
-        </p>
+    <main className="quiz-play relative flex min-h-dvh flex-col text-foreground">
+      <span className="event-glow pointer-events-none" aria-hidden />
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col px-5 py-10">
+        <p className="section-en text-center">Result</p>
+        <h1 className="event-title mt-2 text-center">レッスン完了</h1>
+        <span className="rule-line mx-auto mt-3" />
+        {lessonTitle ? (
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            {lessonTitle}
+          </p>
+        ) : null}
+
+        <section className="event-card relative mt-8 overflow-hidden rounded-2xl p-5">
+          <span className="event-glow" aria-hidden />
+          <p className="section-en">Score</p>
+          <h2 className="mt-1 text-base font-bold">あなたの成績</h2>
+          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-xl bg-muted px-3 py-3">
+              <dt className="text-xs text-muted-foreground">問題数</dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums">{total} 問</dd>
+            </div>
+            <div className="rounded-xl bg-muted px-3 py-3">
+              <dt className="text-xs text-muted-foreground">残りライフ</dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums">{hearts}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <button
+          type="button"
+          onClick={onRestart}
+          className="event-cta mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full py-4 text-lg font-semibold"
+        >
+          <RotateCcw className="size-5" />
+          もう一度
+        </button>
+        <Link
+          href="/"
+          className="mt-4 text-center text-sm font-semibold text-muted-foreground"
+        >
+          ホームに戻る
+        </Link>
       </div>
-      <button
-        type="button"
-        onClick={onRestart}
-        className="event-cta rounded-full px-10 py-4 text-lg font-semibold"
-      >
-        もう一度
-      </button>
     </main>
   );
 }

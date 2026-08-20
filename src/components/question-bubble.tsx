@@ -1,3 +1,5 @@
+import { Sparkles } from "lucide-react";
+
 export function QuestionBubble({
   prompt,
   code,
@@ -6,20 +8,24 @@ export function QuestionBubble({
   code?: string;
 }) {
   return (
-    <div className="mt-4 flex items-end gap-2">
-      <span className="quiz-face mb-1 shrink-0" aria-hidden>
-        😊
-      </span>
-      <div className="quiz-bubble min-w-0 flex-1">
-        <p className="quiz-bubble-text text-lg font-black leading-snug text-balance sm:text-2xl">
-          {prompt}
-        </p>
-        {code ? (
-          <pre className="mt-4 overflow-x-auto rounded-2xl bg-zinc-900 px-4 py-3 font-mono text-sm font-semibold text-white sm:text-base">
-            <code>{code}</code>
-          </pre>
-        ) : null}
+    <div className="event-card relative mt-4 overflow-hidden rounded-2xl p-5">
+      <span className="event-glow" aria-hidden />
+      <div className="relative flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+          <Sparkles className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="section-en">Question</p>
+          <p className="mt-1 text-lg font-black leading-snug tracking-tight text-balance sm:text-xl">
+            {prompt}
+          </p>
+        </div>
       </div>
+      {code ? (
+        <pre className="relative mt-4 overflow-x-auto rounded-xl border border-border bg-muted px-4 py-3 font-mono text-sm font-semibold text-foreground">
+          <code>{code}</code>
+        </pre>
+      ) : null}
     </div>
   );
 }

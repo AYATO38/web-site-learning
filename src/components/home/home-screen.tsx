@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MascotCharacter } from "@/components/home/mascot-character";
 import { LessonCard } from "@/components/home/lesson-card";
-import { getCompletedLessons, lessons } from "@/lib/lessons";
+import { ProgressPanel } from "@/components/home/progress-panel";
+import { getCompletedLessons, getLearnerProgress, lessons } from "@/lib/lessons";
 import { ArrowRight } from "lucide-react";
 
 export function HomeScreen() {
@@ -25,6 +26,8 @@ export function HomeScreen() {
     };
   }, []);
 
+  const learner = getLearnerProgress(completed);
+
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-lg flex-1 flex-col gap-10 px-5 pb-40 pt-10">
       <header className="min-w-0">
@@ -41,6 +44,8 @@ export function HomeScreen() {
       <section className="relative z-10 flex justify-center">
         <MascotCharacter />
       </section>
+
+      <ProgressPanel completedIds={completed} />
 
       <section>
         <p className="section-en">Event</p>
@@ -67,12 +72,25 @@ export function HomeScreen() {
       </section>
 
       <section>
-        <p className="section-en">Lessons</p>
-        <h2 className="mb-4 mt-1 text-[1.45rem] font-black tracking-tight">
-          レッスン
-        </h2>
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <p className="section-en">Lessons</p>
+            <h2 className="mt-1 text-[1.45rem] font-black tracking-tight">
+              レッスン
+            </h2>
+            <p className="mt-1 text-xs font-semibold text-muted-foreground">
+              {learner.completed}/{learner.total} 完了 · Lv.{learner.level}
+            </p>
+          </div>
+          <Link
+            href="/video"
+            className="text-sm font-semibold text-accent"
+          >
+            すべて見る
+          </Link>
+        </div>
         <div className="space-y-4">
-          {lessons.map((lesson, index) => (
+          {lessons.slice(0, 3).map((lesson, index) => (
             <LessonCard
               key={lesson.id}
               lesson={lesson}

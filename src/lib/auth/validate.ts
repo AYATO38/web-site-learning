@@ -1,11 +1,42 @@
+import {
+  REQUIRED_PROFILE_FIELDS,
+  type ProfilePatch,
+} from "@/lib/auth/types";
+
 export type SignupInput = {
   name: string;
   email: string;
   password: string;
-  university: string | null;
+  university: string;
+  faculty: string;
+  department: string;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function requiredText(
+  value: unknown,
+  label: string,
+  max: number,
+): string | { error: string } {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (text.length < 1 || text.length > max) {
+    return { error: `${label}は1〜${max}文字で入力してください` };
+  }
+  return text;
+}
+
+function parseRequiredProfile(
+  data: Record<string, unknown>,
+): ProfilePatch | string {
+  const parsed: ProfilePatch = {};
+  for (const field of REQUIRED_PROFILE_FIELDS) {
+    const value = requiredText(data[field.key], field.label, field.max);
+    if (typeof value !== "string") return value.error;
+    parsed[field.key] = value;
+  }
+  return parsed;
+}
 
 export function parseSignupBody(body: unknown): SignupInput | string {
   if (!body || typeof body !== "object") return "入力が不正です";
@@ -14,8 +45,7 @@ export function parseSignupBody(body: unknown): SignupInput | string {
   const name = typeof data.name === "string" ? data.name.trim() : "";
   const email = typeof data.email === "string" ? data.email.trim() : "";
   const password = typeof data.password === "string" ? data.password : "";
-  const university =
-    typeof data.university === "string" ? data.university.trim() : "";
+  const profile = parseRequiredProfile(data);
 
   if (name.length < 1 || name.length > 40) {
     return "名前は1〜40文字で入力してください";
@@ -26,16 +56,33 @@ export function parseSignupBody(body: unknown): SignupInput | string {
   if (!isValidPassword(password)) {
     return "パスワードは8文字以上にしてください";
   }
-  if (university.length > 80) {
-    return "大学名は80文字以内にしてください";
-  }
+  if (typeof profile === "string") return profile;
 
   return {
     name,
     email,
     password,
-    university: university || null,
+    university: profile.university ?? "",
+    faculty: profile.faculty ?? "",
+    department: profile.department ?? "",
   };
+}
+
+export function parseProfileUpdateBody(body: unknown): ProfilePatch | string {
+  if (!body || typeof body !== "object") return "入力が不正です";
+  const data = body as Record<string, unknown>;
+  const profile = parseRequiredProfile(data);
+  if (typeof profile === "string") return profile;
+
+  const updates: ProfilePatch = { ...profile };
+  if ("name" in data) {
+    const name = typeof data.name === "string" ? data.name.trim() : "";
+    if (name.length < 1 || name.length > 40) {
+      return "名前は1〜40文字で入力してください";
+    }
+    updates.name = name;
+  }
+  return updates;
 }
 
 export function parseLoginBody(

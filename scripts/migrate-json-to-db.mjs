@@ -43,6 +43,12 @@ await sql.query(`
 await sql.query(`
   ALTER TABLE accounts ADD COLUMN IF NOT EXISTS outfit JSONB
 `);
+await sql.query(`
+  ALTER TABLE accounts ADD COLUMN IF NOT EXISTS faculty TEXT
+`);
+await sql.query(`
+  ALTER TABLE accounts ADD COLUMN IF NOT EXISTS department TEXT
+`);
 
 const accountsFile = readJson("accounts.json");
 const accounts = Array.isArray(accountsFile?.accounts) ? accountsFile.accounts : [];
@@ -51,13 +57,15 @@ for (const account of accounts) {
   if (!account?.id || !account?.email || !account?.passwordHash) continue;
   await sql`
     INSERT INTO accounts (
-      id, name, email, university, password_hash, created_at,
+      id, name, email, university, faculty, department, password_hash, created_at,
       reset_token_hash, reset_token_expires_at, last_reset_requested_at
     ) VALUES (
       ${account.id},
       ${account.name ?? ""},
       ${String(account.email).trim().toLowerCase()},
       ${account.university ?? null},
+      ${account.faculty ?? null},
+      ${account.department ?? null},
       ${account.passwordHash},
       ${account.createdAt ?? new Date().toISOString()},
       ${account.resetTokenHash ?? null},

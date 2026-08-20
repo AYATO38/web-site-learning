@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { DIFFICULTY_LABELS } from "@/lib/next-server-day";
+import { DIFFICULTY_LABELS, timeLimitLabel } from "@/lib/next-server-day";
 import {
   memberStatusLabel,
   type Room,
@@ -30,9 +30,16 @@ export function LiveBoard({
           <p className="section-en">Status</p>
           <h3 className="text-base font-bold">会場の回答状況</h3>
         </div>
-        <p className="rounded-md bg-accent-soft px-2.5 py-1 font-mono text-xs font-bold tracking-[0.18em] text-accent">
-          {room.id}
-        </p>
+        <div className="flex shrink-0 items-center gap-2">
+          {room.timeLimitSeconds ? (
+            <p className="rounded-md bg-muted px-2.5 py-1 text-xs font-bold text-foreground">
+              {timeLimitLabel(room.timeLimitSeconds)}
+            </p>
+          ) : null}
+          <p className="rounded-md bg-accent-soft px-2.5 py-1 font-mono text-xs font-bold tracking-[0.18em] text-accent">
+            {room.id}
+          </p>
+        </div>
       </div>
       <ul className="flex flex-col gap-3">
         {room.teams.map((team) => {

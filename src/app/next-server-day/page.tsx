@@ -10,9 +10,13 @@ import { InviteShare } from "@/components/next-server-day/invite-share";
 import { EventShell } from "@/components/next-server-day/event-shell";
 import { EventHero } from "@/components/next-server-day/event-hero";
 import { ResultScreen } from "@/components/next-server-day/result-screen";
+import { QuizTimer } from "@/components/next-server-day/quiz-timer";
+import { useQuestionTimer } from "@/components/next-server-day/use-question-timer";
 import { cn } from "@/lib/utils";
 import {
   DIFFICULTY_LABELS,
+  TIME_LIMIT_OPTIONS,
+  timeLimitLabel,
   type Difficulty,
   type NextServerDayQuestion,
 } from "@/lib/next-server-day";
@@ -23,7 +27,7 @@ import {
   type Room,
 } from "@/lib/nsd-room";
 import { fetchMe } from "@/lib/auth/client";
-import { playCorrectSfx, playResultSfx } from "@/lib/sfx";
+import { playCorrectSfx, playWrongSfx } from "@/lib/sfx";
 import questionsData from "@/data/next-server-day.json";
 
 const questions = questionsData as NextServerDayQuestion[];
@@ -65,6 +69,8 @@ export default function NextServerDayPage() {
   const [xp, setXp] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
+  const [timeLimitDraft, setTimeLimitDraft] = useState<number | null>(15);
+  const [timedOut, setTimedOut] = useState(false);
 
   const activeQuestions = useMemo(
     () =>
@@ -170,6 +176,7 @@ export default function NextServerDayPage() {
     setSelected(null);
     setPhase("answering");
     setFinished(false);
+    setTimedOut(false);
     void syncStatus({
       difficulty: team.difficulty,
       current: 0,
@@ -205,6 +212,27 @@ export default function NextServerDayPage() {
     }
   }
 
+  function applyWrong(fromTimeout: boolean) {
+    setBrokenCombo(combo);
+    setCombo(0);
+    setTimedOut(fromTimeout);
+    setPhase("wrong");
+    void playWrongSfx();
+    void syncStatus({
+      current,
+      total,
+      combo: 0,
+      xp,
+      lastResult: "wrong",
+      finished: false,
+    });
+  }
+
+  function handleTimeout() {
+    if (phase !== "answering") return;
+    applyWrong(true);
+  }
+
   function handleCheck() {
     if (selected === null || !question) return;
     const isCorrect = selected === question.answerIndex;
@@ -215,6 +243,7 @@ export default function NextServerDayPage() {
       setXp(nextXp);
       setCorrectCount((n) => n + 1);
       setBestCombo((best) => Math.max(best, nextCombo));
+      setTimedOut(false);
       setPhase("correct");
       void playCorrectSfx(nextCombo);
       void syncStatus({
@@ -226,24 +255,20 @@ export default function NextServerDayPage() {
         finished: false,
       });
     } else {
-      setBrokenCombo(combo);
-      setCombo(0);
-      setPhase("wrong");
-      void syncStatus({
-        current,
-        total,
-        combo: 0,
-        xp,
-        lastResult: "wrong",
-        finished: false,
-      });
+      applyWrong(false);
     }
   }
+
+  const remaining = useQuestionTimer({
+    seconds: room?.timeLimitSeconds,
+    questionIndex: current,
+    running: Boolean(question) && phase === "answering" && !finished,
+    onTimeout: handleTimeout,
+  });
 
   function handleContinue() {
     if (current + 1 >= total) {
       setFinished(true);
-      void playResultSfx();
       void syncStatus({
         current,
         total,
@@ -257,6 +282,7 @@ export default function NextServerDayPage() {
     setCurrent(nextIndex);
     setSelected(null);
     setPhase("answering");
+    setTimedOut(false);
     void syncStatus({
       current: nextIndex,
       total,
@@ -278,6 +304,7 @@ export default function NextServerDayPage() {
     setXp(0);
     setCorrectCount(0);
     setBestCombo(0);
+    setTimedOut(false);
     void syncStatus({
       current: 0,
       total: count,
@@ -301,6 +328,7 @@ export default function NextServerDayPage() {
     setXp(0);
     setCorrectCount(0);
     setBestCombo(0);
+    setTimedOut(false);
     window.history.replaceState(null, "", "/next-server-day");
   }
 
@@ -327,7 +355,7 @@ export default function NextServerDayPage() {
     setBusy(true);
     setError(null);
     try {
-      const created = await createRoom(names);
+      const created = await createRoom(names, timeLimitDraft);
       setTeams(names);
       setRoom(created);
       setRoomId(created.id);
@@ -402,6 +430,9 @@ export default function NextServerDayPage() {
         return `🔥【連続正解！】現在 ${combo}問連続正解中！すごいです！`;
       }
       return "正解です！";
+    }
+    if (timedOut) {
+      return "時間切れ！次の問題で巻き返そう。";
     }
     if (brokenCombo >= 1) {
       return `残念、不正解です！連続正解記録は${brokenCombo}問でストップしました。次に期待です！`;
@@ -516,6 +547,33 @@ export default function NextServerDayPage() {
                 ))}
               </section>
 
+              <section className="mt-5 event-card rounded-[1.4rem] p-5">
+                <p className="text-sm font-bold text-foreground">1問の制限時間</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  時間内に答えられなかった問題は不正解になります。なしも選べます。
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {TIME_LIMIT_OPTIONS.map((option) => {
+                    const selected = timeLimitDraft === option.seconds;
+                    return (
+                      <button
+                        key={option.label}
+                        type="button"
+                        onClick={() => setTimeLimitDraft(option.seconds)}
+                        className={cn(
+                          "rounded-full px-3.5 py-2 text-sm font-bold",
+                          selected
+                            ? "event-cta shadow-none"
+                            : "border border-border bg-surface-elevated text-muted-foreground",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
               {error && (
                 <p className="mt-3 text-sm font-semibold text-wrong">{error}</p>
               )}
@@ -579,7 +637,7 @@ export default function NextServerDayPage() {
           <EventHero
             kicker={`Room ${roomId}`}
             title="チームを選ぶ"
-            subtitle="名前を入れて、同じチームに複数人で入れます"
+            subtitle={`名前を入れて、同じチームに複数人で入れます · ${timeLimitLabel(room.timeLimitSeconds)}`}
           />
 
           <InviteShare roomId={roomId} />
@@ -641,7 +699,7 @@ export default function NextServerDayPage() {
             backHref="/"
             kicker={`Room ${roomId}`}
             title="難易度を選ぶ"
-            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"}`}
+            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"} · ${timeLimitLabel(room.timeLimitSeconds)}`}
           />
           <button
             type="button"
@@ -688,6 +746,7 @@ export default function NextServerDayPage() {
                       setSelected(null);
                       setPhase("answering");
                       setFinished(false);
+                      setTimedOut(false);
                     })();
                   }}
                   className="event-card flex flex-col items-center justify-center gap-3 rounded-[1.4rem] p-6 text-center transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
@@ -755,6 +814,7 @@ export default function NextServerDayPage() {
           <div className="min-w-0">
             <p className="truncate rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground">
               {roomId} · {myTeam}
+              {room.timeLimitSeconds ? ` · ${timeLimitLabel(room.timeLimitSeconds)}` : ""}
             </p>
             <h2 className="mt-2 text-lg font-black tracking-tight">みんなでクイズ</h2>
           </div>
@@ -765,6 +825,9 @@ export default function NextServerDayPage() {
             <X className="size-6" strokeWidth={3} />
           </Link>
         </div>
+        {room.timeLimitSeconds && remaining !== null && phase === "answering" ? (
+          <QuizTimer total={room.timeLimitSeconds} remaining={remaining} />
+        ) : null}
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
             role="progressbar"
@@ -797,7 +860,7 @@ export default function NextServerDayPage() {
         </div>
         <QuestionBubble prompt={question.prompt} code={question.code} />
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <div className="mt-6 grid gap-3">
           {question.choices.map((choice, index) => (
             <ChoiceButton
               key={choice}
@@ -848,7 +911,7 @@ export default function NextServerDayPage() {
                 <p className="text-lg font-extrabold leading-snug">
                   {feedbackTitle()}
                 </p>
-                <p className="mt-1 text-sm font-semibold leading-relaxed sm:text-base">
+                <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground sm:text-base">
                   <span className="font-extrabold">解説: </span>
                   {question.explanation}
                 </p>

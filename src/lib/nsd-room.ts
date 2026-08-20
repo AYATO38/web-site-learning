@@ -26,6 +26,7 @@ export type Room = {
   id: string;
   teams: TeamStatus[];
   updatedAt: number;
+  timeLimitSeconds: number | null;
 };
 
 export type TeamStatusUpdate = {
@@ -63,11 +64,14 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   return (await res.json().catch(() => ({}))) as Record<string, unknown>;
 }
 
-export async function createRoom(teamNames: string[]): Promise<Room> {
+export async function createRoom(
+  teamNames: string[],
+  timeLimitSeconds: number | null = null,
+): Promise<Room> {
   const res = await fetch("/api/nsd/rooms", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ teamNames }),
+    body: JSON.stringify({ teamNames, timeLimitSeconds }),
     signal: AbortSignal.timeout(FETCH_MS),
   });
   if (!res.ok) {

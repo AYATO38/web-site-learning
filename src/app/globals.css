@@ -115,43 +115,6 @@ body {
   background: var(--rose);
 }
 
-.quiz-bubble-text {
-  color: #171717;
-}
-
-.quiz-bubble {
-  position: relative;
-  background: #ffffff;
-  color: #171717;
-  border: 2px solid #dbeafe;
-  border-radius: 1.6rem 1.6rem 1.6rem 0.7rem;
-  box-shadow: 0 10px 28px rgba(30, 122, 230, 0.08);
-  padding: 1.15rem 1.2rem;
-}
-
-.quiz-bubble::after {
-  content: "";
-  position: absolute;
-  left: 1.4rem;
-  bottom: -12px;
-  border-width: 12px 10px 0 0;
-  border-style: solid;
-  border-color: #ffffff transparent transparent transparent;
-  filter: drop-shadow(0 3px 0 #dbeafe);
-}
-
-.quiz-face {
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 999px;
-  background: #fde68a;
-  border: 2px solid #fbbf24;
-  display: grid;
-  place-items: center;
-  font-size: 1.2rem;
-  box-shadow: 0 4px 0 #f59e0b;
-}
-
 .glass-card,
 .event-card {
   background: var(--surface-elevated);
@@ -221,6 +184,23 @@ body {
   transform: rotateY(180deg);
 }
 
+@keyframes drum-bar {
+  0%,
+  100% {
+    height: 0.55rem;
+    opacity: 0.45;
+  }
+  50% {
+    height: 3.5rem;
+    opacity: 1;
+  }
+}
+
+.drum-bar {
+  height: 0.55rem;
+  animation: drum-bar 0.32s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mascot-bob {
     animation: none;
@@ -228,5 +208,11 @@ body {
 
   .mascot-spin.is-snap {
     transition: none;
+  }
+
+  .drum-bar {
+    animation: none;
+    height: 2rem;
+    opacity: 1;
   }
 }

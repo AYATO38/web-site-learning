@@ -1,3 +1,4 @@
+import { normalizeTimeLimit } from "@/lib/next-server-day";
 import type {
   Room,
   TeamMember,
@@ -14,6 +15,7 @@ type RoomRow = {
   id: string;
   teams: TeamStatus[] | string;
   updated_at: string | number;
+  time_limit_seconds?: number | null;
 };
 
 function parseTeams(value: TeamStatus[] | string): TeamStatus[] {
@@ -28,6 +30,7 @@ function rowToRoom(row: RoomRow): Room {
     id: row.id,
     teams: parseTeams(row.teams),
     updatedAt: Number(row.updated_at),
+    timeLimitSeconds: normalizeTimeLimit(row.time_limit_seconds),
   };
 }
 
@@ -119,27 +122,37 @@ export async function getRoom(id: string): Promise<Room | undefined> {
   const sql = await ensureDb();
   const code = id.toUpperCase();
   const rows = (await sql`
-    SELECT id, teams, updated_at FROM rooms WHERE id = ${code} LIMIT 1
+    SELECT id, teams, updated_at, time_limit_seconds FROM rooms WHERE id = ${code} LIMIT 1
   `) as RoomRow[];
   return rows[0] ? rowToRoom(rows[0]) : undefined;
 }
 
-export async function createRoom(teamNames: string[]): Promise<Room> {
+export async function createRoom(
+  teamNames: string[],
+  timeLimitSeconds: number | null = null,
+): Promise<Room> {
   await pruneExpiredRooms();
   const sql = await ensureDb();
   const now = Date.now();
   const teams = teamNames.map(emptyTeam);
+  const limit = normalizeTimeLimit(timeLimitSeconds);
 
   for (let attempt = 0; attempt < 12; attempt++) {
     const room: Room = {
       id: createRoomId(),
       teams,
       updatedAt: now,
+      timeLimitSeconds: limit,
     };
     try {
       await sql`
-        INSERT INTO rooms (id, teams, updated_at)
-        VALUES (${room.id}, ${JSON.stringify(room.teams)}::jsonb, ${room.updatedAt})
+        INSERT INTO rooms (id, teams, updated_at, time_limit_seconds)
+        VALUES (
+          ${room.id},
+          ${JSON.stringify(room.teams)}::jsonb,
+          ${room.updatedAt},
+          ${room.timeLimitSeconds}
+        )
       `;
       return room;
     } catch (error) {
@@ -174,7 +187,7 @@ export async function patchTeam(
         teams = ${JSON.stringify(next.teams)}::jsonb,
         updated_at = ${next.updatedAt}
       WHERE id = ${room.id} AND updated_at = ${room.updatedAt}
-      RETURNING id, teams, updated_at
+      RETURNING id, teams, updated_at, time_limit_seconds
     `) as RoomRow[];
 
     if (rows[0]) return rowToRoom(rows[0]);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { normalizeTimeLimit } from "@/lib/next-server-day";
 import { createRoom } from "@/lib/nsd-store";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +8,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     teamNames?: unknown;
+    timeLimitSeconds?: unknown;
   } | null;
 
   const teamNames = Array.isArray(body?.teamNames)
@@ -30,6 +32,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const room = await createRoom(teamNames);
+  const timeLimitSeconds = normalizeTimeLimit(body?.timeLimitSeconds);
+  const room = await createRoom(teamNames, timeLimitSeconds);
   return NextResponse.json(room);
 }

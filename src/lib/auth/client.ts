@@ -24,6 +24,8 @@ export async function registerAccount(input: {
   email: string;
   password: string;
   university: string;
+  faculty: string;
+  department: string;
 }): Promise<PublicUser> {
   const res = await fetch("/api/auth/register", {
     method: "POST",
@@ -95,6 +97,21 @@ export async function saveAccountOutfit(outfit: MascotOutfit): Promise<PublicUse
   const body = await readJson(res);
   if (!res.ok) {
     throw new Error(errorMessage(body, "キャラクターを保存できませんでした"));
+  }
+  return body.user as PublicUser;
+}
+
+export async function saveAccountProfile(
+  patch: Record<string, string>,
+): Promise<PublicUser> {
+  const res = await fetch("/api/auth/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  const body = await readJson(res);
+  if (!res.ok) {
+    throw new Error(errorMessage(body, "プロフィールを保存できませんでした"));
   }
   return body.user as PublicUser;
 }

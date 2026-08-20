@@ -17,8 +17,11 @@ export async function getRoom(id: string): Promise<Room | undefined> {
   return backend().getRoom(id);
 }
 
-export async function createRoom(teamNames: string[]): Promise<Room> {
-  return backend().createRoom(teamNames);
+export async function createRoom(
+  teamNames: string[],
+  timeLimitSeconds: number | null = null,
+): Promise<Room> {
+  return backend().createRoom(teamNames, timeLimitSeconds);
 }
 
 export async function patchTeam(

@@ -30,24 +30,26 @@ function QuizGate() {
 
   if (!unlocked) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
-        <span className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          <Lock className="size-8" />
-        </span>
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-foreground">
+      <div className="quiz-play relative flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+        <span className="event-glow pointer-events-none" aria-hidden />
+        <div className="event-card relative z-10 w-full max-w-sm rounded-2xl p-6">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+            <Lock className="size-7" />
+          </span>
+          <p className="section-en mt-4">Quiz</p>
+          <h1 className="mt-1 text-xl font-black tracking-tight text-foreground">
             クイズはロック中
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             「{lesson.title}」の講義動画を視聴完了すると解放されます。
           </p>
+          <Link
+            href={`/video?lesson=${lesson.id}`}
+            className="event-cta mt-5 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold"
+          >
+            講義動画を見る
+          </Link>
         </div>
-        <Link
-          href={`/video?lesson=${lesson.id}`}
-          className="event-cta rounded-full px-6 py-3 text-sm font-semibold"
-        >
-          講義動画を見る
-        </Link>
       </div>
     );
   }

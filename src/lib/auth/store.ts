@@ -1,5 +1,5 @@
 import { hasDatabaseUrl } from "@/lib/db";
-import type { Account } from "@/lib/auth/types";
+import type { Account, ProfilePatch } from "@/lib/auth/types";
 import type { MascotOutfit } from "@/lib/mascot";
 import * as jsonStore from "@/lib/auth/store-json";
 import * as pgStore from "@/lib/auth/store-pg";
@@ -57,4 +57,11 @@ export async function updateAccountOutfit(
   outfit: MascotOutfit,
 ): Promise<Account | undefined> {
   return backend().updateAccountOutfit(userId, outfit);
+}
+
+export async function updateAccountProfile(
+  userId: string,
+  patch: ProfilePatch,
+): Promise<Account | undefined> {
+  return backend().updateAccountProfile(userId, patch);
 }
