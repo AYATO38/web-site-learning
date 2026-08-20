@@ -37,7 +37,7 @@ function VideoContent() {
         ホームに戻る
       </Link>
 
-      <h1 className="font-display text-xl font-medium text-foreground">{lesson.title}</h1>
+      <h1 className="text-xl font-black tracking-tight text-foreground">{lesson.title}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{lesson.description}</p>
 
       <div className="mt-5 overflow-hidden rounded-[1.4rem] border border-border bg-foreground shadow-[0_18px_40px_rgba(23,23,23,0.08)]">

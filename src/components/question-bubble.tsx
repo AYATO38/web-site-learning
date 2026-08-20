@@ -11,7 +11,7 @@ export function QuestionBubble({
         😊
       </span>
       <div className="quiz-bubble min-w-0 flex-1">
-        <p className="quiz-bubble-text font-display text-lg font-medium leading-snug text-balance sm:text-2xl">
+        <p className="quiz-bubble-text text-lg font-black leading-snug text-balance sm:text-2xl">
           {prompt}
         </p>
         {code ? (

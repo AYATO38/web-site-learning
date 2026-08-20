@@ -229,7 +229,7 @@ function ResultScreen({
         🎉
       </span>
       <div>
-        <h1 className="font-display text-3xl font-medium">レッスン完了！</h1>
+        <h1 className="text-3xl font-black tracking-tight">レッスン完了！</h1>
         <p className="mt-2 font-semibold text-muted-foreground">
           {total} 問中クリア · 残りライフ {hearts}
         </p>

@@ -34,7 +34,7 @@ function QuizGate() {
           <Lock className="size-8" />
         </span>
         <div>
-          <h1 className="font-display text-xl font-medium text-foreground">
+          <h1 className="text-xl font-black tracking-tight text-foreground">
             クイズはロック中
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">

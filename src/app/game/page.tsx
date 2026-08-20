@@ -5,7 +5,7 @@ export default function GamePage() {
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-40 pt-8">
       <header className="mb-6">
         <p className="section-en">Play</p>
-        <h1 className="font-display mt-1 text-2xl font-medium tracking-tight">
+        <h1 className="mt-1 text-2xl font-black tracking-tight">
           ゲームで遊ぼう
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -19,7 +19,7 @@ export default function GamePage() {
             <Gamepad className="size-6" />
           </span>
           <div>
-            <h2 className="font-display text-lg font-medium">タイピングゲーム</h2>
+            <h2 className="text-lg font-black tracking-tight">タイピングゲーム</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               指を鍛えて正確にタイピングしよう
             </p>
@@ -34,7 +34,7 @@ export default function GamePage() {
             <Sparkles className="size-6" />
           </span>
           <div>
-            <h2 className="font-display text-lg font-medium">コード間違い探し</h2>
+            <h2 className="text-lg font-black tracking-tight">コード間違い探し</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               コードの違いを見つけてスコアを競おう
             </p>

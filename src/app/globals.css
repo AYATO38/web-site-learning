@@ -67,7 +67,7 @@
   --color-wrong-surface: var(--wrong-surface);
   --color-wrong-foreground: var(--wrong-foreground);
   --font-sans: var(--font-noto), var(--font-inter), sans-serif;
-  --font-display: var(--font-cormorant), var(--font-serif-jp), serif;
+  --font-display: var(--font-noto), var(--font-inter), sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
@@ -110,8 +110,8 @@ body {
 
 .event-title,
 .brand-mark {
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-weight: 900;
   line-height: 1.25;
   color: var(--foreground);
   overflow-wrap: anywhere;
@@ -119,12 +119,12 @@ body {
 }
 
 .brand-mark {
-  letter-spacing: 0.14em;
+  letter-spacing: -0.04em;
 }
 
 .event-title {
   font-size: clamp(1.55rem, 5.6vw, 2.15rem);
-  letter-spacing: 0.02em;
+  letter-spacing: -0.03em;
 }
 
 .rule-line {

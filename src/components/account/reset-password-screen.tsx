@@ -37,7 +37,7 @@ export function ResetPasswordScreen({ token }: { token: string }) {
     <div className="mx-auto w-full max-w-lg flex-1 px-4 pb-36 pt-10">
       <header className="mb-8">
         <p className="section-en">Account</p>
-        <h1 className="font-display mt-1 text-2xl font-medium">パスワード再設定</h1>
+        <h1 className="mt-1 text-2xl font-black tracking-tight">パスワード再設定</h1>
       </header>
 
       {!token ? (

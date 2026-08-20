@@ -86,7 +86,7 @@ export function AccountScreen() {
     <div className="mx-auto w-full max-w-lg flex-1 px-4 pb-36 pt-10">
       <header className="mb-8">
         <p className="section-en">Account</p>
-        <h1 className="font-display mt-1 text-2xl font-medium">アカウント</h1>
+        <h1 className="mt-1 text-2xl font-black tracking-tight">アカウント</h1>
       </header>
 
       {loading ? (

@@ -31,7 +31,7 @@ export function HomeScreen() {
         <p className="brand-mark text-[2rem] sm:text-[2.2rem]">POSSE</p>
         <span className="rule-line mt-3" />
         <p className="section-en mt-8">Learning</p>
-        <h1 className="font-display mt-2 text-[1.85rem] font-medium leading-snug">
+        <h1 className="mt-2 text-[1.85rem] font-black leading-snug tracking-tight">
           プログラミング学習を
           <br />
           コミュニティの力で。
@@ -44,14 +44,14 @@ export function HomeScreen() {
 
       <section>
         <p className="section-en">Event</p>
-        <h2 className="font-display mb-4 mt-1 text-[1.45rem] font-medium">
+        <h2 className="mb-4 mt-1 text-[1.45rem] font-black tracking-tight">
           イベント
         </h2>
         <Link href="/next-server-day" className="block">
           <div className="event-card relative overflow-hidden rounded-2xl p-6">
             <span className="event-glow" aria-hidden />
             <p className="section-en">Next Server Day</p>
-            <p className="brand-mark mt-2 text-[1.45rem] leading-snug tracking-normal">
+            <p className="brand-mark mt-2 text-[1.45rem] leading-snug">
               次サバDAY 限定クイズ
             </p>
             <span className="rule-line mt-3" />
@@ -68,7 +68,7 @@ export function HomeScreen() {
 
       <section className="mt-12">
         <p className="section-en">Lessons</p>
-        <h2 className="font-display mb-4 mt-1 text-[1.45rem] font-medium">
+        <h2 className="mb-4 mt-1 text-[1.45rem] font-black tracking-tight">
           レッスン
         </h2>
         <div className="space-y-4">

@@ -756,7 +756,7 @@ export default function NextServerDayPage() {
             <p className="truncate rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground">
               {roomId} · {myTeam}
             </p>
-            <h2 className="font-display mt-2 text-lg font-medium">みんなでクイズ</h2>
+            <h2 className="mt-2 text-lg font-black tracking-tight">みんなでクイズ</h2>
           </div>
           <Link
             href="/"
