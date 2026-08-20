@@ -38,7 +38,7 @@ export function HomeScreen() {
         </h1>
       </header>
 
-      <section className="flex justify-center">
+      <section className="relative z-10 flex justify-center">
         <MascotCharacter />
       </section>
 

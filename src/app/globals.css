@@ -192,3 +192,41 @@ body {
 .mascot-bob {
   animation: mascot-bob 2.6s ease-in-out infinite;
 }
+
+.mascot-stage {
+  perspective: 900px;
+}
+
+.mascot-spin {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.mascot-spin.is-live {
+  transition: none;
+}
+
+.mascot-spin.is-snap {
+  transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mascot-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.mascot-face-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-bob {
+    animation: none;
+  }
+
+  .mascot-spin.is-snap {
+    transition: none;
+  }
+}

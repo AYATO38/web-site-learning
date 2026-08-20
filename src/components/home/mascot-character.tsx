@@ -20,10 +20,37 @@ import {
   type MascotOutfit,
 } from "@/lib/mascot";
 import { MascotSvg } from "@/components/home/mascot-svg";
-import { Dices, Shirt, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Dices, Shirt, Sparkles } from "lucide-react";
 
 function wrapYaw(value: number) {
   return ((value % 360) + 360) % 360;
+}
+
+function facingBack(yaw: number) {
+  const turn = wrapYaw(yaw);
+  return turn > 90 && turn < 270;
+}
+
+function snappedFace(yaw: number) {
+  const base = facingBack(yaw)
+    ? Math.round((yaw - 180) / 360) * 360 + 180
+    : Math.round(yaw / 360) * 360;
+  return base;
+}
+
+function snapYaw(yaw: number, velocity: number) {
+  const turn = wrapYaw(yaw);
+  const flicked = Math.abs(velocity) > 0.45;
+  let wantBack = turn > 90 && turn < 270;
+
+  if (flicked) {
+    wantBack = velocity > 0 ? turn < 180 : turn > 180;
+  }
+
+  if (wantBack) {
+    return Math.round((yaw - 180) / 360) * 360 + 180;
+  }
+  return Math.round(yaw / 360) * 360;
 }
 
 function Chip({
@@ -103,12 +130,20 @@ export function MascotCharacter() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [yaw, setYaw] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [hasTurned, setHasTurned] = useState(false);
+  const yawRef = useRef(0);
   const drag = useRef<{
     x: number;
     yaw: number;
     pointerId: number;
+    moved: boolean;
+    lastX: number;
+    lastAt: number;
+    velocity: number;
   } | null>(null);
   const dragged = useRef(false);
+
+  yawRef.current = yaw;
 
   useEffect(() => {
     setOutfit(loadOutfit());
@@ -126,31 +161,70 @@ export function MascotCharacter() {
 
   function closeMenu() {
     setMenuOpen(false);
-    setYaw(0);
+    faceFront();
+  }
+
+  function markTurned() {
+    setHasTurned(true);
+  }
+
+  function spin(direction: 1 | -1) {
+    markTurned();
+    setYaw((current) => snappedFace(current) + direction * 180);
+  }
+
+  function faceFront() {
+    setYaw((current) => Math.round(current / 360) * 360);
   }
 
   function onLookPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     dragged.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = {
       x: event.clientX,
-      yaw,
+      yaw: yawRef.current,
       pointerId: event.pointerId,
+      moved: false,
+      lastX: event.clientX,
+      lastAt: performance.now(),
+      velocity: 0,
     };
   }
 
   function onLookPointerMove(event: React.PointerEvent<HTMLDivElement>) {
-    if (!drag.current || drag.current.pointerId !== event.pointerId) return;
-    const dx = event.clientX - drag.current.x;
-    if (Math.abs(dx) < 14 && !dragged.current) return;
+    const state = drag.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    const now = performance.now();
+    const step = event.clientX - state.lastX;
+    const dt = Math.max(1, now - state.lastAt);
+    state.velocity = step / dt;
+    state.lastX = event.clientX;
+    state.lastAt = now;
+
+    const dx = event.clientX - state.x;
+    if (Math.abs(dx) < 12 && !state.moved) return;
+
+    state.moved = true;
     dragged.current = true;
+    markTurned();
     setDragging(true);
-    setYaw(drag.current.yaw + dx * 0.85);
+    setYaw(state.yaw + dx * 0.62);
   }
 
-  function onLookPointerUp() {
+  function onLookPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    const state = drag.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    const velocity = state.velocity;
+    const moved = state.moved;
     drag.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
     setDragging(false);
+    if (moved) {
+      setYaw((current) => snapYaw(current, velocity));
+    }
   }
 
   function onCharacterClick() {
@@ -158,9 +232,8 @@ export function MascotCharacter() {
     openMenu();
   }
 
-  const turn = wrapYaw(yaw);
-  const squash = Math.max(0.38, Math.abs(Math.cos((turn * Math.PI) / 180)));
-  const showBack = Math.cos((turn * Math.PI) / 180) < 0;
+  const showingBack = facingBack(yaw);
+  const offFront = Math.abs(wrapYaw(yaw)) > 8 && Math.abs(wrapYaw(yaw) - 360) > 8;
 
   return (
     <div className="flex w-full min-w-0 flex-col items-center">
@@ -168,27 +241,77 @@ export function MascotCharacter() {
         className={cn(
           "flex w-full flex-col items-center gap-2",
           menuOpen &&
-            "sticky top-0 z-20 -mx-5 border-b border-border bg-white/95 px-5 py-3 backdrop-blur-md",
+            "sticky top-0 z-30 -mx-5 border-b border-border bg-white/95 px-5 py-3 backdrop-blur-md",
         )}
       >
-        <div
-          aria-label="キャラクター"
-          onPointerDown={onLookPointerDown}
-          onPointerMove={onLookPointerMove}
-          onPointerUp={onLookPointerUp}
-          onPointerCancel={onLookPointerUp}
-          onClick={onCharacterClick}
-          className="relative z-0 flex size-44 cursor-pointer select-none items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-accent-soft to-white shadow-sm ring-4 ring-accent/15 sm:size-52"
-          style={{ clipPath: "circle(50%)" }}
-        >
-          <div className={cn("pointer-events-none", !dragging && "mascot-bob")}>
+        <div className="flex w-full items-center justify-center gap-1 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => spin(-1)}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-white text-foreground shadow-sm"
+            aria-label="左に回す"
+          >
+            <ChevronLeft className="size-5" strokeWidth={2.4} />
+          </button>
+
+          <div
+            aria-label="キャラクター。左右にドラッグするか、ボタンで回転します"
+            onPointerDown={onLookPointerDown}
+            onPointerMove={onLookPointerMove}
+            onPointerUp={onLookPointerUp}
+            onPointerCancel={onLookPointerUp}
+            onClick={onCharacterClick}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                spin(-1);
+              }
+              if (event.key === "ArrowRight") {
+                event.preventDefault();
+                spin(1);
+              }
+            }}
+            tabIndex={0}
+            className={cn(
+              "relative z-10 flex size-44 touch-none select-none items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-accent sm:size-52",
+              dragging ? "cursor-grabbing" : "cursor-grab",
+            )}
+          >
+            <span
+              aria-hidden
+              className="absolute inset-0 -z-10 rounded-full bg-gradient-to-b from-accent-soft to-white shadow-sm ring-4 ring-accent/15"
+            />
             <div
-              className="h-40 w-36 sm:h-48 sm:w-44"
-              style={{ transform: `scaleX(${squash})` }}
+              className={cn(
+                "mascot-stage pointer-events-none h-40 w-36 sm:h-48 sm:w-44",
+                !dragging && "mascot-bob",
+              )}
             >
-              <MascotSvg outfit={outfit} view={showBack ? "back" : "front"} />
+              <div
+                className={cn(
+                  "mascot-spin h-full w-full",
+                  dragging ? "is-live" : "is-snap",
+                )}
+                style={{ transform: `rotateY(${yaw}deg)` }}
+              >
+                <div className="mascot-face">
+                  <MascotSvg outfit={outfit} view="front" />
+                </div>
+                <div className="mascot-face mascot-face-back">
+                  <MascotSvg outfit={outfit} view="back" />
+                </div>
+              </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => spin(1)}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-white text-foreground shadow-sm"
+            aria-label="右に回す"
+          >
+            <ChevronRight className="size-5" strokeWidth={2.4} />
+          </button>
         </div>
 
         {outfit.name.trim() ? (
@@ -197,7 +320,15 @@ export function MascotCharacter() {
           </p>
         ) : null}
 
-        <div className="relative z-30 flex items-center gap-3">
+        <p className="min-h-5 text-center text-xs font-semibold text-muted-foreground">
+          {showingBack
+            ? "背面"
+            : hasTurned
+              ? "正面"
+              : "左右にドラッグして回せます"}
+        </p>
+
+        <div className="relative z-10 flex items-center gap-3">
           <button
             type="button"
             onMouseDown={(event) => event.preventDefault()}
@@ -212,10 +343,10 @@ export function MascotCharacter() {
             <Sparkles className="mr-1 inline size-3.5" />
             {menuOpen ? "閉じる" : "着せ替え"}
           </button>
-          {menuOpen ? (
+          {offFront ? (
             <button
               type="button"
-              onClick={() => setYaw(0)}
+              onClick={faceFront}
               className="cursor-pointer text-xs font-semibold text-accent"
             >
               正面に戻す
@@ -225,7 +356,7 @@ export function MascotCharacter() {
       </div>
 
       {menuOpen ? (
-        <div className="glass-card relative z-30 mt-4 w-full max-w-sm space-y-4 rounded-[1.4rem] p-4">
+        <div className="glass-card relative z-0 mt-4 w-full max-w-sm space-y-4 rounded-[1.4rem] p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="flex items-center gap-2 text-sm font-bold">
               <Shirt className="size-4 text-accent" />
