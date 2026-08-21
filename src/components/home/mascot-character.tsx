@@ -436,7 +436,7 @@ export function MascotCharacter() {
               type="text"
               value={outfit.name}
               maxLength={8}
-              placeholder="例: あやと"
+              placeholder="例: POSSE"
               onChange={(event) => updateOutfit({ name: event.target.value })}
               className="rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm font-semibold outline-none focus:border-accent"
             />
