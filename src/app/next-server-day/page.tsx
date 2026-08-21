@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { X, Check, Sparkles, Minus, Plus } from "lucide-react";
-import { ChoiceButton } from "@/components/choice-button";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { InviteShare } from "@/components/next-server-day/invite-share";
@@ -11,15 +10,25 @@ import { EventShell } from "@/components/next-server-day/event-shell";
 import { EventHero } from "@/components/next-server-day/event-hero";
 import { ResultScreen } from "@/components/next-server-day/result-screen";
 import { QuizTimer } from "@/components/next-server-day/quiz-timer";
+import { AnswerPanel } from "@/components/next-server-day/answer-panel";
 import { useQuestionTimer } from "@/components/next-server-day/use-question-timer";
 import { cn } from "@/lib/utils";
 import {
   DIFFICULTY_LABELS,
+  QUESTION_KIND_LABELS,
   TIME_LIMIT_OPTIONS,
   timeLimitLabel,
   type Difficulty,
-  type NextServerDayQuestion,
 } from "@/lib/next-server-day";
+import {
+  canSubmitDraft,
+  earnedXp,
+  gradeAnswer,
+  initialDraft,
+  questionTimeLimit,
+  speedWindowSeconds,
+  type AnswerDraft,
+} from "@/lib/nsd-grade";
 import {
   createRoom,
   fetchRoom,
@@ -28,9 +37,9 @@ import {
 } from "@/lib/nsd-room";
 import { fetchMe } from "@/lib/auth/client";
 import { playCorrectSfx, playWrongSfx } from "@/lib/sfx";
-import questionsData from "@/data/next-server-day.json";
+import { nsdQuestions } from "@/data/next-server-day";
 
-const questions = questionsData as NextServerDayQuestion[];
+const questions = nsdQuestions;
 
 type Phase = "answering" | "correct" | "wrong";
 type EntryMode = "create" | "join";
@@ -61,7 +70,8 @@ export default function NextServerDayPage() {
   const [selectedDifficulty, setSelectedDifficulty] =
     useState<Difficulty | null>(null);
   const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [draft, setDraft] = useState<AnswerDraft>({ kind: "choice", index: null });
+  const [draftKey, setDraftKey] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("answering");
   const [finished, setFinished] = useState(false);
   const [combo, setCombo] = useState(0);
@@ -71,6 +81,10 @@ export default function NextServerDayPage() {
   const [bestCombo, setBestCombo] = useState(0);
   const [timeLimitDraft, setTimeLimitDraft] = useState<number | null>(15);
   const [timedOut, setTimedOut] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [lastGain, setLastGain] = useState<{ xp: number; bonus: number } | null>(
+    null,
+  );
 
   const activeQuestions = useMemo(
     () =>
@@ -82,6 +96,13 @@ export default function NextServerDayPage() {
 
   const total = activeQuestions.length;
   const question = activeQuestions[current];
+  const timeCap = questionTimeLimit(question?.kind ?? "choice", room?.timeLimitSeconds);
+  const questionKey = question ? `${question.id}:${attempt}` : null;
+
+  if (question && questionKey !== draftKey) {
+    setDraftKey(questionKey);
+    setDraft(initialDraft(question));
+  }
 
   const progress = useMemo(() => {
     if (total === 0) return 0;
@@ -173,7 +194,6 @@ export default function NextServerDayPage() {
     setXp(0);
     setCorrectCount(0);
     setBestCombo(0);
-    setSelected(null);
     setPhase("answering");
     setFinished(false);
     setTimedOut(false);
@@ -217,6 +237,7 @@ export default function NextServerDayPage() {
     setCombo(0);
     setTimedOut(fromTimeout);
     setPhase("wrong");
+    setLastGain(null);
     void playWrongSfx();
     void syncStatus({
       current,
@@ -233,14 +254,35 @@ export default function NextServerDayPage() {
     applyWrong(true);
   }
 
+  const { remaining, elapsedMs } = useQuestionTimer({
+    seconds: timeCap,
+    questionIndex: current,
+    running: Boolean(question) && phase === "answering" && !finished,
+    onTimeout: handleTimeout,
+  });
+
+  const previewGain = question
+    ? earnedXp({
+        baseXp: question.xp,
+        elapsedMs,
+        windowSeconds: speedWindowSeconds(question.kind, timeCap),
+      })
+    : null;
+
   function handleCheck() {
-    if (selected === null || !question) return;
-    const isCorrect = selected === question.answerIndex;
+    if (!question || !canSubmitDraft(question, draft)) return;
+    const isCorrect = gradeAnswer(question, draft);
     if (isCorrect) {
+      const gain = earnedXp({
+        baseXp: question.xp,
+        elapsedMs,
+        windowSeconds: speedWindowSeconds(question.kind, timeCap),
+      });
       const nextCombo = combo + 1;
-      const nextXp = xp + question.xp;
+      const nextXp = xp + gain.xp;
       setCombo(nextCombo);
       setXp(nextXp);
+      setLastGain(gain);
       setCorrectCount((n) => n + 1);
       setBestCombo((best) => Math.max(best, nextCombo));
       setTimedOut(false);
@@ -259,13 +301,6 @@ export default function NextServerDayPage() {
     }
   }
 
-  const remaining = useQuestionTimer({
-    seconds: room?.timeLimitSeconds,
-    questionIndex: current,
-    running: Boolean(question) && phase === "answering" && !finished,
-    onTimeout: handleTimeout,
-  });
-
   function handleContinue() {
     if (current + 1 >= total) {
       setFinished(true);
@@ -280,9 +315,9 @@ export default function NextServerDayPage() {
     }
     const nextIndex = current + 1;
     setCurrent(nextIndex);
-    setSelected(null);
     setPhase("answering");
     setTimedOut(false);
+    setLastGain(null);
     void syncStatus({
       current: nextIndex,
       total,
@@ -296,7 +331,6 @@ export default function NextServerDayPage() {
       ? questions.filter((q) => q.difficulty === selectedDifficulty).length
       : 0;
     setCurrent(0);
-    setSelected(null);
     setPhase("answering");
     setFinished(false);
     setCombo(0);
@@ -305,6 +339,8 @@ export default function NextServerDayPage() {
     setCorrectCount(0);
     setBestCombo(0);
     setTimedOut(false);
+    setLastGain(null);
+    setAttempt((n) => n + 1);
     void syncStatus({
       current: 0,
       total: count,
@@ -440,13 +476,7 @@ export default function NextServerDayPage() {
     return "残念、不正解です！次に期待です！";
   }
 
-  function choiceStatus(index: number) {
-    if (!question) return "idle" as const;
-    if (phase === "answering") return selected === index ? "selected" : "idle";
-    if (index === question.answerIndex) return "correct";
-    if (index === selected) return "wrong";
-    return "idle";
-  }
+  const readyToSubmit = Boolean(question && canSubmitDraft(question, draft));
 
   if (!teams || !roomId || !room) {
     const canStart = teamNameDrafts.every((name) => name.trim().length > 0);
@@ -550,7 +580,7 @@ export default function NextServerDayPage() {
               <section className="mt-5 event-card rounded-[1.4rem] p-5">
                 <p className="text-sm font-bold text-foreground">1問の制限時間</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  時間内に答えられなかった問題は不正解になります。なしも選べます。
+                  早く答えるほど XP が増えます（最大2倍）。時間切れは不正解です。コード記述・バグ修正は最短60秒、なしも選べます。
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {TIME_LIMIT_OPTIONS.map((option) => {
@@ -743,7 +773,6 @@ export default function NextServerDayPage() {
                       setXp(0);
                       setCorrectCount(0);
                       setBestCombo(0);
-                      setSelected(null);
                       setPhase("answering");
                       setFinished(false);
                       setTimedOut(false);
@@ -757,7 +786,9 @@ export default function NextServerDayPage() {
                   <div>
                     <div className="text-lg font-extrabold">{d.label}</div>
                     <div className="mt-1 text-sm text-muted-foreground">{d.desc}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{count} 問</div>
+                    <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {d.kinds}
+                    </div>
                   </div>
                 </button>
               );
@@ -814,7 +845,7 @@ export default function NextServerDayPage() {
           <div className="min-w-0">
             <p className="truncate rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground">
               {roomId} · {myTeam}
-              {room.timeLimitSeconds ? ` · ${timeLimitLabel(room.timeLimitSeconds)}` : ""}
+              {timeCap ? ` · 1問 ${timeCap}秒` : ""}
             </p>
             <h2 className="mt-2 text-lg font-black tracking-tight">みんなでクイズ</h2>
           </div>
@@ -825,8 +856,8 @@ export default function NextServerDayPage() {
             <X className="size-6" strokeWidth={3} />
           </Link>
         </div>
-        {room.timeLimitSeconds && remaining !== null && phase === "answering" ? (
-          <QuizTimer total={room.timeLimitSeconds} remaining={remaining} />
+        {timeCap && remaining !== null && phase === "answering" ? (
+          <QuizTimer total={timeCap} remaining={remaining} />
         ) : null}
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
@@ -841,11 +872,11 @@ export default function NextServerDayPage() {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-[calc(12rem+env(safe-area-inset-bottom))] pt-2 sm:px-6">
+      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-2 sm:px-6 pb-[calc(12rem+env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-muted-foreground">
-            {DIFFICULTY_LABELS[selectedDifficulty].label} · もんだい {current + 1} /{" "}
-            {total}
+            {DIFFICULTY_LABELS[selectedDifficulty].label} ·{" "}
+            {QUESTION_KIND_LABELS[question.kind]} · もんだい {current + 1} / {total}
           </p>
           <div className="flex items-center gap-2">
             {combo >= 2 && (
@@ -854,24 +885,25 @@ export default function NextServerDayPage() {
               </span>
             )}
             <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-semibold text-foreground">
-              XP +{question.xp}
+              {phase === "correct" && lastGain
+                ? `+${lastGain.xp} XP`
+                : phase === "answering" && previewGain
+                  ? `今 +${previewGain.xp} XP`
+                  : `XP +${question.xp}〜${question.xp * 2}`}
             </span>
           </div>
         </div>
-        <QuestionBubble prompt={question.prompt} code={question.code} />
+        <QuestionBubble
+          prompt={question.prompt}
+          code={question.kind === "choice" ? question.code : undefined}
+        />
 
-        <div className="mt-6 grid gap-3">
-          {question.choices.map((choice, index) => (
-            <ChoiceButton
-              key={choice}
-              label={choice}
-              index={index}
-              status={choiceStatus(index)}
-              disabled={phase !== "answering"}
-              onSelect={() => setSelected(index)}
-            />
-          ))}
-        </div>
+        <AnswerPanel
+          question={question}
+          draft={draft}
+          phase={phase}
+          onChange={setDraft}
+        />
 
         <div className="mt-6">
           <LiveBoard room={room} myTeam={myTeam} myMemberId={memberId} />
@@ -911,6 +943,14 @@ export default function NextServerDayPage() {
                 <p className="text-lg font-extrabold leading-snug">
                   {feedbackTitle()}
                 </p>
+                {phase === "correct" && lastGain ? (
+                  <p className="mt-1 text-sm font-bold">
+                    +{lastGain.xp} XP
+                    {lastGain.bonus > 0
+                      ? `（速さボーナス +${lastGain.bonus}）`
+                      : ""}
+                  </p>
+                ) : null}
                 <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground sm:text-base">
                   <span className="font-extrabold">解説: </span>
                   {question.explanation}
@@ -923,10 +963,10 @@ export default function NextServerDayPage() {
             <button
               type="button"
               onClick={handleCheck}
-              disabled={selected === null}
+              disabled={!readyToSubmit}
               className={cn(
                 "w-full rounded-full py-4 text-lg font-bold",
-                selected !== null
+                readyToSubmit
                   ? "event-cta"
                   : "cursor-not-allowed bg-muted text-muted-foreground",
               )}
