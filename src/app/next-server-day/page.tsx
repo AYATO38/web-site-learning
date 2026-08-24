@@ -11,6 +11,7 @@ import { EventHero } from "@/components/next-server-day/event-hero";
 import { ResultScreen } from "@/components/next-server-day/result-screen";
 import { QuizTimer } from "@/components/next-server-day/quiz-timer";
 import { AnswerPanel } from "@/components/next-server-day/answer-panel";
+import { RoomSettingsPanel } from "@/components/next-server-day/room-settings";
 import { useQuestionTimer } from "@/components/next-server-day/use-question-timer";
 import { cn } from "@/lib/utils";
 import {
@@ -30,8 +31,12 @@ import {
   type AnswerDraft,
 } from "@/lib/nsd-grade";
 import {
+  DEFAULT_GALLERY_CAPACITY,
+  GALLERY_MAX,
+  allTeamsDone,
   createRoom,
   fetchRoom,
+  isHost,
   updateTeamStatus,
   type Room,
 } from "@/lib/nsd-room";
@@ -80,6 +85,11 @@ export default function NextServerDayPage() {
   const [correctCount, setCorrectCount] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
   const [timeLimitDraft, setTimeLimitDraft] = useState<number | null>(15);
+  const [galleryCapacityDraft, setGalleryCapacityDraft] = useState(
+    DEFAULT_GALLERY_CAPACITY,
+  );
+  const [inGallery, setInGallery] = useState(false);
+  const [skipAutoSeat, setSkipAutoSeat] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [lastGain, setLastGain] = useState<{ xp: number; bonus: number } | null>(
@@ -207,6 +217,13 @@ export default function NextServerDayPage() {
       finished: false,
     });
   }, [room, myTeam, memberId, selectedDifficulty]);
+
+  useEffect(() => {
+    if (!room || !memberId || skipAutoSeat || myTeam || inGallery) return;
+    if (room.gallery.some((guest) => guest.id === memberId)) {
+      setInGallery(true);
+    }
+  }, [room, memberId, skipAutoSeat, myTeam, inGallery]);
 
   async function syncStatus(partial: {
     difficulty?: Difficulty | null;
@@ -358,6 +375,8 @@ export default function NextServerDayPage() {
     setRoom(null);
     setError(null);
     setSelectedDifficulty(null);
+    setInGallery(false);
+    setSkipAutoSeat(false);
     setFinished(false);
     setCombo(0);
     setBrokenCombo(0);
@@ -391,7 +410,15 @@ export default function NextServerDayPage() {
     setBusy(true);
     setError(null);
     try {
-      const created = await createRoom(names, timeLimitDraft);
+      const hostName = displayName.trim();
+      if (!hostName || !memberId) {
+        setError("ルームマスターの名前を入力してください");
+        return;
+      }
+      const created = await createRoom(names, timeLimitDraft, {
+        galleryCapacity: galleryCapacityDraft,
+        host: { memberId, name: hostName },
+      });
       setTeams(names);
       setRoom(created);
       setRoomId(created.id);
@@ -452,12 +479,53 @@ export default function NextServerDayPage() {
         memberName: playerName,
       });
       setRoom(next);
+      setSkipAutoSeat(false);
+      setInGallery(false);
       setMyTeam(name);
     } catch (e) {
       setError(e instanceof Error ? e.message : "チームに入れませんでした");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function chooseGallery() {
+    const playerName = displayName.trim();
+    if (!playerName) {
+      setError("あなたの名前を入力してください");
+      return;
+    }
+    if (!roomId || !memberId) {
+      setError("準備が終わるまで少し待ってから、もう一度選んでください");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      sessionStorage.setItem("nsd-member-name", playerName);
+      const next = await updateTeamStatus(roomId, {
+        teamName: "",
+        memberId,
+        memberName: playerName,
+        joinGallery: true,
+      });
+      setRoom(next);
+      setSkipAutoSeat(false);
+      setMyTeam(null);
+      setSelectedDifficulty(null);
+      setInGallery(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ギャラリーに入れませんでした");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function reselectSeat() {
+    setSkipAutoSeat(true);
+    setMyTeam(null);
+    setInGallery(false);
+    setSelectedDifficulty(null);
   }
 
   function feedbackTitle() {
@@ -479,7 +547,10 @@ export default function NextServerDayPage() {
   const readyToSubmit = Boolean(question && canSubmitDraft(question, draft));
 
   if (!teams || !roomId || !room) {
-    const canStart = teamNameDrafts.every((name) => name.trim().length > 0);
+    const canStart =
+      teamNameDrafts.every((name) => name.trim().length > 0) &&
+      displayName.trim().length > 0 &&
+      Boolean(memberId);
 
     return (
       <EventShell>
@@ -577,6 +648,57 @@ export default function NextServerDayPage() {
                 ))}
               </section>
 
+              <label className="mt-5 flex flex-col gap-1.5">
+                <span className="text-sm font-bold text-muted-foreground">
+                  ルームマスターの名前
+                </span>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={20}
+                  placeholder="例: POSSE"
+                  className="rounded-xl border border-border bg-surface-elevated px-4 py-3 text-base font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-accent"
+                />
+              </label>
+
+              <section className="mt-5 event-card rounded-[1.4rem] p-5">
+                <p className="text-sm font-bold text-foreground">ギャラリー枠</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  クイズには参加せず、会場の進行と結果を見る席です。0にすると観戦できません。
+                </p>
+                <div className="mt-3 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGalleryCapacityDraft((n) => Math.max(0, n - 1))
+                    }
+                    disabled={galleryCapacityDraft <= 0}
+                    className="flex size-12 items-center justify-center rounded-xl border border-border bg-surface-elevated text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="ギャラリー枠を減らす"
+                  >
+                    <Minus className="size-5" strokeWidth={3} />
+                  </button>
+                  <span className="min-w-16 text-center text-5xl font-extrabold tabular-nums text-accent">
+                    {galleryCapacityDraft}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGalleryCapacityDraft((n) => Math.min(GALLERY_MAX, n + 1))
+                    }
+                    disabled={galleryCapacityDraft >= GALLERY_MAX}
+                    className="flex size-12 items-center justify-center rounded-xl border border-border bg-surface-elevated text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="ギャラリー枠を増やす"
+                  >
+                    <Plus className="size-5" strokeWidth={3} />
+                  </button>
+                </div>
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  0〜{GALLERY_MAX}席
+                </p>
+              </section>
+
               <section className="mt-5 event-card rounded-[1.4rem] p-5">
                 <p className="text-sm font-bold text-foreground">1問の制限時間</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -660,17 +782,28 @@ export default function NextServerDayPage() {
     );
   }
 
-  if (!myTeam) {
+  if (!myTeam && !inGallery) {
+    const galleryLeft = Math.max(0, room.galleryCapacity - room.gallery.length);
     return (
       <EventShell>
         <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
           <EventHero
             kicker={`Room ${roomId}`}
             title="チームを選ぶ"
-            subtitle={`名前を入れて、同じチームに複数人で入れます · ${timeLimitLabel(room.timeLimitSeconds)}`}
+            subtitle={
+              room.host
+                ? `ルームマスター: ${room.host.name} · ${timeLimitLabel(room.timeLimitSeconds)}`
+                : `名前を入れて、同じチームに複数人で入れます · ${timeLimitLabel(room.timeLimitSeconds)}`
+            }
           />
 
           <InviteShare roomId={roomId} />
+
+          <RoomSettingsPanel
+            room={room}
+            memberId={memberId}
+            onUpdated={setRoom}
+          />
 
           <label className="mb-5 flex flex-col gap-1.5">
             <span className="text-sm font-bold text-muted-foreground">
@@ -681,9 +814,12 @@ export default function NextServerDayPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={20}
-              placeholder="例: 山田"
+              placeholder="例: POSSE"
               className="rounded-xl border border-border bg-surface-elevated px-4 py-3 text-base font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-accent"
             />
+            {memberId && isHost(room, memberId) ? (
+              <span className="text-xs font-bold text-accent">あなたがこの部屋のルームマスターです</span>
+            ) : null}
           </label>
 
           {error && (
@@ -703,10 +839,29 @@ export default function NextServerDayPage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {team.members.length === 0
                     ? "まだ誰も入っていません"
-                    : `${team.members.length}人 · ${team.members.map((m) => m.name).join("、")}`}
+                    : `${team.members.length}人 · ${team.members
+                        .map((m) =>
+                          isHost(room, m.id) ? `${m.name}（ルームマスター）` : m.name,
+                        )
+                        .join("、")}`}
                 </p>
               </button>
             ))}
+            {room.galleryCapacity > 0 ? (
+              <button
+                type="button"
+                disabled={busy || galleryLeft === 0}
+                onClick={() => void chooseGallery()}
+                className="event-card rounded-2xl px-5 py-4 text-left transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+              >
+                <p className="text-lg font-extrabold">ギャラリー枠</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {galleryLeft === 0
+                    ? "満席です"
+                    : `残り ${galleryLeft}席 · クイズには参加せず観戦します`}
+                </p>
+              </button>
+            ) : null}
           </div>
 
           <button
@@ -721,6 +876,52 @@ export default function NextServerDayPage() {
     );
   }
 
+  if (inGallery) {
+    return (
+      <EventShell>
+        {allTeamsDone(room) ? (
+          <ResultScreen
+            room={room}
+            myTeam={null}
+            myMemberId={memberId}
+            correctCount={0}
+            total={0}
+            xp={0}
+            bestCombo={0}
+            onRestart={reselectSeat}
+            spectator
+          />
+        ) : (
+          <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
+            <EventHero
+              backHref="/"
+              kicker={`Room ${roomId}`}
+              title="ギャラリー観戦"
+              subtitle={
+                room.host
+                  ? `ルームマスター: ${room.host.name} · 会場の進行を見ています`
+                  : "会場の進行を見ています"
+              }
+            />
+            <button
+              type="button"
+              onClick={reselectSeat}
+              className="mb-6 -mt-3 text-xs font-semibold text-muted-foreground underline-offset-2 hover:underline"
+            >
+              席を選び直す
+            </button>
+            <RoomSettingsPanel
+              room={room}
+              memberId={memberId}
+              onUpdated={setRoom}
+            />
+            <LiveBoard room={room} myTeam={null} myMemberId={memberId} />
+          </div>
+        )}
+      </EventShell>
+    );
+  }
+
   if (!selectedDifficulty) {
     return (
       <EventShell>
@@ -729,15 +930,21 @@ export default function NextServerDayPage() {
             backHref="/"
             kicker={`Room ${roomId}`}
             title="難易度を選ぶ"
-            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"} · ${timeLimitLabel(room.timeLimitSeconds)}`}
+            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"}${isHost(room, memberId) ? " · ルームマスター" : ""} · ${timeLimitLabel(room.timeLimitSeconds)}`}
           />
           <button
             type="button"
-            onClick={() => setMyTeam(null)}
+            onClick={reselectSeat}
             className="mb-6 -mt-3 text-xs font-semibold text-muted-foreground underline-offset-2 hover:underline"
           >
             チーム選択をやり直す
           </button>
+
+          <RoomSettingsPanel
+            room={room}
+            memberId={memberId}
+            onUpdated={setRoom}
+          />
 
           <div className="mb-6">
             <LiveBoard room={room} myTeam={myTeam} myMemberId={memberId} />

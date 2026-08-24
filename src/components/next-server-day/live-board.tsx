@@ -5,6 +5,7 @@ import {
   type Room,
   type TeamMember,
 } from "@/lib/nsd-room";
+import { HostMark } from "@/components/next-server-day/host-mark";
 
 function statusClass(member: TeamMember) {
   if (member.finished || member.lastResult === "correct") {
@@ -20,7 +21,7 @@ export function LiveBoard({
   myMemberId,
 }: {
   room: Room;
-  myTeam: string;
+  myTeam?: string | null;
   myMemberId?: string | null;
 }) {
   return (
@@ -29,6 +30,11 @@ export function LiveBoard({
         <div>
           <p className="section-en">Status</p>
           <h3 className="text-base font-bold">会場の回答状況</h3>
+          {room.host ? (
+            <p className="mt-1 text-xs font-semibold text-muted-foreground">
+              ルームマスター: {room.host.name}
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {room.timeLimitSeconds ? (
@@ -43,7 +49,7 @@ export function LiveBoard({
       </div>
       <ul className="flex flex-col gap-3">
         {room.teams.map((team) => {
-          const isMine = team.name === myTeam;
+          const isMine = Boolean(myTeam && team.name === myTeam);
           return (
             <li
               key={team.name}
@@ -76,6 +82,7 @@ export function LiveBoard({
                       <p className="truncate text-xs font-semibold text-foreground">
                         {member.name}
                         {member.id === myMemberId ? "（自分）" : ""}
+                        <HostMark room={room} memberId={member.id} />
                       </p>
                       <div className="flex shrink-0 items-center gap-2">
                         {member.total > 0 && (
@@ -100,6 +107,41 @@ export function LiveBoard({
             </li>
           );
         })}
+        {room.galleryCapacity > 0 ? (
+          <li
+            className={cn(
+              "rounded-xl px-3 py-2.5",
+              myTeam
+                ? "bg-muted"
+                : "bg-accent-soft/60 ring-1 ring-accent/30",
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-bold">ギャラリー枠</p>
+              <p className="shrink-0 text-xs text-muted-foreground">
+                {room.gallery.length}/{room.galleryCapacity}席
+              </p>
+            </div>
+            {room.gallery.length === 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                観戦者はまだいません
+              </p>
+            ) : (
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {room.gallery.map((guest) => (
+                  <li
+                    key={guest.id}
+                    className="rounded-md bg-background px-2 py-1 text-xs font-semibold"
+                  >
+                    {guest.name}
+                    {guest.id === myMemberId ? "（自分）" : ""}
+                    <HostMark room={room} memberId={guest.id} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ) : null}
       </ul>
     </section>
   );

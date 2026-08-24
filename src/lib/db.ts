@@ -67,6 +67,24 @@ export async function ensureDb(): Promise<Sql> {
         ALTER TABLE rooms ADD COLUMN IF NOT EXISTS time_limit_seconds INTEGER
       `);
       await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS host_member_id TEXT
+      `);
+      await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS host_name TEXT
+      `);
+      await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS gallery_capacity INTEGER
+      `);
+      await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS gallery JSONB
+      `);
+      await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS settings_notice TEXT
+      `);
+      await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS settings_updated_at BIGINT
+      `);
+      await sql.query(`
         ALTER TABLE accounts ADD COLUMN IF NOT EXISTS faculty TEXT
       `);
       await sql.query(`

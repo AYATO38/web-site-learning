@@ -6,7 +6,7 @@ import { Trophy, Medal, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_LABELS } from "@/lib/next-server-day";
 import {
-  teamFinished,
+  allTeamsDone,
   teamXp,
   type Room,
   type TeamStatus,
@@ -42,23 +42,23 @@ export function ResultScreen({
   xp,
   bestCombo,
   onRestart,
+  spectator = false,
 }: {
   room: Room;
-  myTeam: string;
+  myTeam?: string | null;
   myMemberId?: string | null;
   correctCount: number;
   total: number;
   xp: number;
   bestCombo: number;
   onRestart: () => void;
+  spectator?: boolean;
 }) {
   const ranked = [...room.teams]
     .filter((team) => team.members.length > 0)
     .sort((a, b) => teamXp(b) - teamXp(a));
   const myRank = ranked.findIndex((t) => t.name === myTeam);
-  const allDone = room.teams.every(
-    (team) => team.members.length === 0 || teamFinished(team),
-  );
+  const allDone = allTeamsDone(room);
   const winner = ranked[0];
   const [revealed, setRevealed] = useState(false);
   const revealedRef = useRef(false);
@@ -132,7 +132,8 @@ export function ResultScreen({
                   key={team.name}
                   team={team}
                   index={index}
-                  isMine={team.name === myTeam}
+                  isMine={Boolean(myTeam && team.name === myTeam)}
+                  room={room}
                 />
               ))}
             </ol>
@@ -147,32 +148,45 @@ export function ResultScreen({
       {revealed || !allDone ? (
         <>
           <section className="event-card mt-4 rounded-2xl p-5">
-            <p className="section-en">{myTeam}</p>
-            <h2 className="mt-1 text-base font-bold">あなたの成績</h2>
+            <p className="section-en">{spectator ? "Gallery" : myTeam}</p>
+            <h2 className="mt-1 text-base font-bold">
+              {spectator ? "ギャラリー観戦" : "あなたの成績"}
+            </h2>
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              {allDone && revealed && (
+              {spectator ? (
                 <Stat
-                  label="チーム順位"
-                  value={myRank >= 0 ? rankLabel(myRank) : "-"}
+                  label="観戦"
+                  value={`${room.gallery.length}/${room.galleryCapacity}席`}
                 />
+              ) : (
+                <>
+                  {allDone && revealed && (
+                    <Stat
+                      label="チーム順位"
+                      value={myRank >= 0 ? rankLabel(myRank) : "-"}
+                    />
+                  )}
+                  <Stat label="獲得XP" value={`${xp}`} />
+                  <Stat label="正解数" value={`${correctCount} / ${total}`} />
+                  <Stat
+                    label="最高コンボ"
+                    value={bestCombo >= 2 ? `${bestCombo}連続` : `${bestCombo}`}
+                  />
+                </>
               )}
-              <Stat label="獲得XP" value={`${xp}`} />
-              <Stat label="正解数" value={`${correctCount} / ${total}`} />
-              <Stat
-                label="最高コンボ"
-                value={bestCombo >= 2 ? `${bestCombo}連続` : `${bestCombo}`}
-              />
             </dl>
           </section>
 
-          <button
-            type="button"
-            onClick={onRestart}
-            className="event-cta mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full py-4 text-lg font-semibold"
-          >
-            <RotateCcw className="size-5" />
-            もう一度挑戦
-          </button>
+          {spectator ? null : (
+            <button
+              type="button"
+              onClick={onRestart}
+              className="event-cta mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full py-4 text-lg font-semibold"
+            >
+              <RotateCcw className="size-5" />
+              もう一度挑戦
+            </button>
+          )}
           <Link
             href="/"
             className="mt-4 text-center text-sm text-muted-foreground"
@@ -226,10 +240,12 @@ function RankRow({
   team,
   index,
   isMine,
+  room,
 }: {
   team: TeamStatus;
   index: number;
   isMine: boolean;
+  room: Room;
 }) {
   const xp = teamXp(team);
   return (
@@ -252,7 +268,13 @@ function RankRow({
           <p className="truncate text-xs text-muted-foreground">
             {team.difficulty ? DIFFICULTY_LABELS[team.difficulty].label : "未挑戦"}
             {` · ${team.members.length}人`}
-            {` · ${team.members.map((member) => member.name).join("、")}`}
+            {` · ${team.members
+              .map((member) =>
+                room.host?.memberId === member.id
+                  ? `${member.name}（ルームマスター）`
+                  : member.name,
+              )
+              .join("、")}`}
           </p>
         </div>
       </div>

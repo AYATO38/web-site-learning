@@ -1,5 +1,10 @@
 import { hasDatabaseUrl } from "@/lib/db";
-import type { Room, TeamStatusUpdate } from "@/lib/nsd-room";
+import type {
+  CreateRoomOptions,
+  Room,
+  RoomPatchResult,
+  RoomUpdate,
+} from "@/lib/nsd-room";
 import * as jsonStore from "@/lib/nsd-store-json";
 import * as pgStore from "@/lib/nsd-store-pg";
 
@@ -20,13 +25,14 @@ export async function getRoom(id: string): Promise<Room | undefined> {
 export async function createRoom(
   teamNames: string[],
   timeLimitSeconds: number | null = null,
+  options: CreateRoomOptions = {},
 ): Promise<Room> {
-  return backend().createRoom(teamNames, timeLimitSeconds);
+  return backend().createRoom(teamNames, timeLimitSeconds, options);
 }
 
 export async function patchTeam(
   id: string,
-  update: TeamStatusUpdate,
-): Promise<Room | "team_full" | "name_required" | undefined> {
+  update: RoomUpdate,
+): Promise<RoomPatchResult | undefined> {
   return backend().patchTeam(id, update);
 }

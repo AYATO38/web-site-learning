@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeTimeLimit } from "@/lib/next-server-day";
+import { normalizeGalleryCapacity } from "@/lib/nsd-room";
 import { createRoom } from "@/lib/nsd-store";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,8 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     teamNames?: unknown;
     timeLimitSeconds?: unknown;
+    galleryCapacity?: unknown;
+    host?: { memberId?: unknown; name?: unknown } | null;
   } | null;
 
   const teamNames = Array.isArray(body?.teamNames)
@@ -32,7 +35,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const hostId =
+    typeof body?.host?.memberId === "string" ? body.host.memberId.trim() : "";
+  const hostName =
+    typeof body?.host?.name === "string" ? body.host.name.trim() : "";
+  if (!hostId || !hostName) {
+    return NextResponse.json(
+      { error: "ルームマスターの名前を入力してください" },
+      { status: 400 },
+    );
+  }
+
   const timeLimitSeconds = normalizeTimeLimit(body?.timeLimitSeconds);
-  const room = await createRoom(teamNames, timeLimitSeconds);
+  const room = await createRoom(teamNames, timeLimitSeconds, {
+    galleryCapacity: normalizeGalleryCapacity(body?.galleryCapacity),
+    host: { memberId: hostId, name: hostName },
+  });
   return NextResponse.json(room);
 }

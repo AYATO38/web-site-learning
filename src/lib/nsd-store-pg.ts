@@ -1,13 +1,17 @@
 import { normalizeTimeLimit } from "@/lib/next-server-day";
-import type {
-  Room,
-  TeamMember,
-  TeamStatus,
-  TeamStatusUpdate,
+import {
+  applyRoomUpdate,
+  normalizeGalleryCapacity,
+  normalizeRoom,
+  type CreateRoomOptions,
+  type GalleryMember,
+  type Room,
+  type RoomPatchResult,
+  type RoomUpdate,
+  type TeamStatus,
 } from "@/lib/nsd-room";
 import { asUniqueViolation, ensureDb } from "@/lib/db";
 
-const MAX_MEMBERS = 8;
 const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -16,22 +20,40 @@ type RoomRow = {
   teams: TeamStatus[] | string;
   updated_at: string | number;
   time_limit_seconds?: number | null;
+  host_member_id?: string | null;
+  host_name?: string | null;
+  gallery_capacity?: number | null;
+  gallery?: GalleryMember[] | string | null;
+  settings_notice?: string | null;
+  settings_updated_at?: string | number | null;
 };
 
-function parseTeams(value: TeamStatus[] | string): TeamStatus[] {
+function parseJsonArray<T>(value: T[] | string | null | undefined): T[] {
   if (Array.isArray(value)) return value;
+  if (!value) return [];
   const parsed = JSON.parse(value) as unknown;
-  if (!Array.isArray(parsed)) return [];
-  return parsed as TeamStatus[];
+  return Array.isArray(parsed) ? (parsed as T[]) : [];
 }
 
 function rowToRoom(row: RoomRow): Room {
-  return {
+  return normalizeRoom({
     id: row.id,
-    teams: parseTeams(row.teams),
+    teams: parseJsonArray<TeamStatus>(row.teams),
     updatedAt: Number(row.updated_at),
     timeLimitSeconds: normalizeTimeLimit(row.time_limit_seconds),
-  };
+    host: row.host_member_id
+      ? {
+          memberId: row.host_member_id,
+          name: row.host_name?.trim() || "ルームマスター",
+        }
+      : null,
+    galleryCapacity: row.gallery_capacity ?? 0,
+    gallery: parseJsonArray<GalleryMember>(row.gallery),
+    settingsNotice: row.settings_notice ?? null,
+    settingsUpdatedAt: row.settings_updated_at
+      ? Number(row.settings_updated_at)
+      : null,
+  });
 }
 
 function emptyTeam(name: string): TeamStatus {
@@ -43,72 +65,12 @@ function emptyTeam(name: string): TeamStatus {
   };
 }
 
-function emptyMember(id: string, name: string): TeamMember {
-  const now = Date.now();
-  return {
-    id,
-    name,
-    current: 0,
-    total: 0,
-    combo: 0,
-    xp: 0,
-    lastResult: null,
-    finished: false,
-    joinedAt: now,
-    updatedAt: now,
-  };
-}
-
 function createRoomId(): string {
   let id = "";
   for (let i = 0; i < 4; i++) {
     id += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
   }
   return id;
-}
-
-function applyTeamPatch(
-  room: Room,
-  update: TeamStatusUpdate,
-): Room | "team_full" | "name_required" {
-  const next: Room = JSON.parse(JSON.stringify(room)) as Room;
-  const team = next.teams.find((item) => item.name === update.teamName);
-  if (!team) return room;
-
-  for (const other of next.teams) {
-    if (other.name === team.name) continue;
-    other.members = other.members.filter(
-      (member) => member.id !== update.memberId,
-    );
-  }
-
-  let member = team.members.find((item) => item.id === update.memberId);
-  if (!member) {
-    const memberName = update.memberName?.trim();
-    if (!memberName) return "name_required";
-    if (team.members.length >= MAX_MEMBERS) return "team_full";
-    member = emptyMember(update.memberId, memberName);
-    team.members.push(member);
-  } else if (update.memberName?.trim()) {
-    member.name = update.memberName.trim();
-  }
-
-  if (update.difficulty && !team.difficulty) {
-    team.difficulty = update.difficulty;
-  }
-
-  if (update.current !== undefined) member.current = update.current;
-  if (update.total !== undefined) member.total = update.total;
-  if (update.combo !== undefined) member.combo = update.combo;
-  if (update.xp !== undefined) member.xp = update.xp;
-  if (update.lastResult !== undefined) member.lastResult = update.lastResult;
-  if (update.finished !== undefined) member.finished = update.finished;
-
-  const now = Date.now();
-  member.updatedAt = now;
-  team.updatedAt = now;
-  next.updatedAt = now;
-  return next;
 }
 
 async function pruneExpiredRooms(): Promise<void> {
@@ -122,7 +84,10 @@ export async function getRoom(id: string): Promise<Room | undefined> {
   const sql = await ensureDb();
   const code = id.toUpperCase();
   const rows = (await sql`
-    SELECT id, teams, updated_at, time_limit_seconds FROM rooms WHERE id = ${code} LIMIT 1
+    SELECT id, teams, updated_at, time_limit_seconds,
+           host_member_id, host_name, gallery_capacity, gallery,
+           settings_notice, settings_updated_at
+    FROM rooms WHERE id = ${code} LIMIT 1
   `) as RoomRow[];
   return rows[0] ? rowToRoom(rows[0]) : undefined;
 }
@@ -130,28 +95,44 @@ export async function getRoom(id: string): Promise<Room | undefined> {
 export async function createRoom(
   teamNames: string[],
   timeLimitSeconds: number | null = null,
+  options: CreateRoomOptions = {},
 ): Promise<Room> {
   await pruneExpiredRooms();
   const sql = await ensureDb();
   const now = Date.now();
   const teams = teamNames.map(emptyTeam);
   const limit = normalizeTimeLimit(timeLimitSeconds);
+  const galleryCapacity = normalizeGalleryCapacity(options.galleryCapacity);
+  const host = options.host ?? null;
 
   for (let attempt = 0; attempt < 12; attempt++) {
-    const room: Room = {
+    const room = normalizeRoom({
       id: createRoomId(),
       teams,
       updatedAt: now,
       timeLimitSeconds: limit,
-    };
+      host,
+      galleryCapacity,
+      gallery: [],
+    });
     try {
       await sql`
-        INSERT INTO rooms (id, teams, updated_at, time_limit_seconds)
+        INSERT INTO rooms (
+          id, teams, updated_at, time_limit_seconds,
+          host_member_id, host_name, gallery_capacity, gallery,
+          settings_notice, settings_updated_at
+        )
         VALUES (
           ${room.id},
           ${JSON.stringify(room.teams)}::jsonb,
           ${room.updatedAt},
-          ${room.timeLimitSeconds}
+          ${room.timeLimitSeconds},
+          ${room.host?.memberId ?? null},
+          ${room.host?.name ?? null},
+          ${room.galleryCapacity},
+          ${JSON.stringify(room.gallery)}::jsonb,
+          ${room.settingsNotice},
+          ${room.settingsUpdatedAt}
         )
       `;
       return room;
@@ -166,28 +147,41 @@ export async function createRoom(
 
 export async function patchTeam(
   id: string,
-  update: TeamStatusUpdate,
-): Promise<Room | "team_full" | "name_required" | undefined> {
+  update: RoomUpdate,
+): Promise<RoomPatchResult | undefined> {
   const sql = await ensureDb();
   const code = id.toUpperCase();
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const room = await getRoom(code);
     if (!room) return undefined;
+    if (
+      !update.settings &&
+      !update.joinGallery &&
+      !room.teams.some((team) => team.name === update.teamName)
+    ) {
+      return undefined;
+    }
 
-    const team = room.teams.find((item) => item.name === update.teamName);
-    if (!team) return undefined;
-
-    const next = applyTeamPatch(room, update);
-    if (next === "team_full" || next === "name_required") return next;
+    const next = applyRoomUpdate(room, update);
+    if (typeof next === "string") return next;
 
     const rows = (await sql`
       UPDATE rooms
       SET
         teams = ${JSON.stringify(next.teams)}::jsonb,
-        updated_at = ${next.updatedAt}
+        updated_at = ${next.updatedAt},
+        time_limit_seconds = ${next.timeLimitSeconds},
+        host_member_id = ${next.host?.memberId ?? null},
+        host_name = ${next.host?.name ?? null},
+        gallery_capacity = ${next.galleryCapacity},
+        gallery = ${JSON.stringify(next.gallery)}::jsonb,
+        settings_notice = ${next.settingsNotice},
+        settings_updated_at = ${next.settingsUpdatedAt}
       WHERE id = ${room.id} AND updated_at = ${room.updatedAt}
-      RETURNING id, teams, updated_at, time_limit_seconds
+      RETURNING id, teams, updated_at, time_limit_seconds,
+                host_member_id, host_name, gallery_capacity, gallery,
+                settings_notice, settings_updated_at
     `) as RoomRow[];
 
     if (rows[0]) return rowToRoom(rows[0]);

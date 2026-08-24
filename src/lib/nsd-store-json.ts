@@ -1,15 +1,18 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { normalizeTimeLimit } from "@/lib/next-server-day";
-import type {
-  Room,
-  TeamMember,
-  TeamStatus,
-  TeamStatusUpdate,
+import {
+  applyRoomUpdate,
+  normalizeGalleryCapacity,
+  normalizeRoom,
+  type CreateRoomOptions,
+  type Room,
+  type RoomPatchResult,
+  type RoomUpdate,
+  type TeamStatus,
 } from "@/lib/nsd-room";
 
 const DATA_PATH = join(process.cwd(), "data", "nsd-rooms.json");
-const MAX_MEMBERS = 8;
 const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 
 type StoreFile = {
@@ -36,19 +39,12 @@ function pruneRooms(rooms: Room[]): Room[] {
   return rooms.filter((room) => room.updatedAt >= cutoff);
 }
 
-function normalizeRoom(room: Room): Room {
-  return {
-    ...room,
-    timeLimitSeconds: normalizeTimeLimit(room.timeLimitSeconds),
-  };
-}
-
 function readStore(): StoreFile {
   try {
     const raw = readFileSync(DATA_PATH, "utf8");
     const parsed = JSON.parse(raw) as StoreFile;
     if (!parsed || !Array.isArray(parsed.rooms)) return emptyStore();
-    return { rooms: pruneRooms(parsed.rooms) };
+    return { rooms: pruneRooms(parsed.rooms).map(normalizeRoom) };
   } catch {
     return emptyStore();
   }
@@ -85,22 +81,6 @@ function emptyTeam(name: string): TeamStatus {
   };
 }
 
-function emptyMember(id: string, name: string): TeamMember {
-  const now = Date.now();
-  return {
-    id,
-    name,
-    current: 0,
-    total: 0,
-    combo: 0,
-    xp: 0,
-    lastResult: null,
-    finished: false,
-    joinedAt: now,
-    updatedAt: now,
-  };
-}
-
 export async function getRoom(id: string): Promise<Room | undefined> {
   const code = id.toUpperCase();
   const room = readStore().rooms.find((item) => item.id === code);
@@ -110,17 +90,21 @@ export async function getRoom(id: string): Promise<Room | undefined> {
 export async function createRoom(
   teamNames: string[],
   timeLimitSeconds: number | null = null,
+  options: CreateRoomOptions = {},
 ): Promise<Room> {
   return withLock(() => {
     const store = readStore();
     const existing = new Set(store.rooms.map((room) => room.id));
     const now = Date.now();
-    const room: Room = {
+    const room = normalizeRoom({
       id: createRoomId(existing),
       teams: teamNames.map(emptyTeam),
       updatedAt: now,
       timeLimitSeconds: normalizeTimeLimit(timeLimitSeconds),
-    };
+      host: options.host ?? null,
+      galleryCapacity: normalizeGalleryCapacity(options.galleryCapacity),
+      gallery: [],
+    });
     store.rooms.push(room);
     writeStore(store);
     return room;
@@ -129,50 +113,26 @@ export async function createRoom(
 
 export async function patchTeam(
   id: string,
-  update: TeamStatusUpdate,
-): Promise<Room | "team_full" | "name_required" | undefined> {
+  update: RoomUpdate,
+): Promise<RoomPatchResult | undefined> {
   return withLock(() => {
     const store = readStore();
     const room = store.rooms.find((item) => item.id === id.toUpperCase());
     if (!room) return undefined;
-
-    const team = room.teams.find((item) => item.name === update.teamName);
-    if (!team) return undefined;
-
-    for (const other of room.teams) {
-      if (other.name === team.name) continue;
-      other.members = other.members.filter(
-        (member) => member.id !== update.memberId,
-      );
+    if (
+      !update.settings &&
+      !update.joinGallery &&
+      !room.teams.some((team) => team.name === update.teamName)
+    ) {
+      return undefined;
     }
 
-    let member = team.members.find((item) => item.id === update.memberId);
-    if (!member) {
-      const memberName = update.memberName?.trim();
-      if (!memberName) return "name_required";
-      if (team.members.length >= MAX_MEMBERS) return "team_full";
-      member = emptyMember(update.memberId, memberName);
-      team.members.push(member);
-    } else if (update.memberName?.trim()) {
-      member.name = update.memberName.trim();
-    }
+    const next = applyRoomUpdate(room, update);
+    if (typeof next === "string") return next;
 
-    if (update.difficulty && !team.difficulty) {
-      team.difficulty = update.difficulty;
-    }
-
-    if (update.current !== undefined) member.current = update.current;
-    if (update.total !== undefined) member.total = update.total;
-    if (update.combo !== undefined) member.combo = update.combo;
-    if (update.xp !== undefined) member.xp = update.xp;
-    if (update.lastResult !== undefined) member.lastResult = update.lastResult;
-    if (update.finished !== undefined) member.finished = update.finished;
-
-    const now = Date.now();
-    member.updatedAt = now;
-    team.updatedAt = now;
-    room.updatedAt = now;
+    const index = store.rooms.findIndex((item) => item.id === room.id);
+    store.rooms[index] = next;
     writeStore(store);
-    return normalizeRoom(room);
+    return next;
   });
 }
