@@ -104,6 +104,8 @@ export async function createRoom(
       host: options.host ?? null,
       galleryCapacity: normalizeGalleryCapacity(options.galleryCapacity),
       gallery: [],
+      settingsNotice: null,
+      settingsUpdatedAt: null,
     });
     store.rooms.push(room);
     writeStore(store);

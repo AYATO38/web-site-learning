@@ -114,6 +114,8 @@ export async function createRoom(
       host,
       galleryCapacity,
       gallery: [],
+      settingsNotice: null,
+      settingsUpdatedAt: null,
     });
     try {
       await sql`
