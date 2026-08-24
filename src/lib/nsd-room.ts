@@ -1,4 +1,4 @@
-import { normalizeTimeLimit, type Difficulty } from "@/lib/next-server-day";
+import { DIFFICULTY_LABELS, normalizeTimeLimit, type Difficulty } from "@/lib/next-server-day";
 
 export type LastResult = "correct" | "wrong" | null;
 
@@ -66,6 +66,7 @@ export type CreateRoomOptions = {
 export type RoomSettingsPatch = {
   timeLimitSeconds?: number | null;
   galleryCapacity?: number;
+  difficulty?: Difficulty;
 };
 
 export type RoomUpdate = TeamStatusUpdate & {
@@ -111,6 +112,10 @@ export function isHost(room: Room, memberId: string | null | undefined): boolean
   return Boolean(memberId && room.host?.memberId === memberId);
 }
 
+export function lockedDifficulty(room: Room): Difficulty | null {
+  return room.teams.find((team) => team.difficulty)?.difficulty ?? null;
+}
+
 export function quizStarted(room: Room): boolean {
   return room.teams.some((team) =>
     team.members.some((member) => member.total > 0 || member.finished),
@@ -124,6 +129,20 @@ export function allTeamsDone(room: Room): boolean {
       (team) => team.members.length === 0 || teamFinished(team),
     )
   );
+}
+
+function isDifficulty(value: unknown): value is Difficulty {
+  return (
+    value === "beginner" || value === "intermediate" || value === "advanced"
+  );
+}
+
+function lockRoomDifficulty(room: Room, difficulty: Difficulty) {
+  for (const team of room.teams) {
+    team.difficulty = difficulty;
+  }
+  room.settingsNotice = `ルームマスターが${DIFFICULTY_LABELS[difficulty].label}でスタートしました`;
+  room.settingsUpdatedAt = Date.now();
 }
 
 function emptyMember(id: string, name: string): TeamMember {
@@ -159,7 +178,7 @@ export function applyRoomUpdate(
     if (next.host?.memberId !== update.memberId) return "not_master";
     const notices: string[] = [];
     if (update.settings.timeLimitSeconds !== undefined) {
-      if (quizStarted(next)) return "quiz_started";
+      if (quizStarted(next) || lockedDifficulty(next)) return "quiz_started";
       next.timeLimitSeconds = normalizeTimeLimit(
         update.settings.timeLimitSeconds,
       );
@@ -173,7 +192,13 @@ export function applyRoomUpdate(
       next.galleryCapacity = cap;
       notices.push(`ギャラリー枠を${cap}席に`);
     }
-    if (notices.length === 0) return next;
+    if (isDifficulty(update.settings.difficulty) && !lockedDifficulty(next)) {
+      lockRoomDifficulty(next, update.settings.difficulty);
+    }
+    if (notices.length === 0) {
+      next.updatedAt = Date.now();
+      return next;
+    }
     const now = Date.now();
     next.settingsNotice = `ルームマスターが${notices.join("、")}変更しました`;
     next.settingsUpdatedAt = now;
@@ -227,8 +252,13 @@ export function applyRoomUpdate(
     syncHostName(next, update.memberId, memberName);
   }
 
-  if (update.difficulty && !team.difficulty) {
-    team.difficulty = update.difficulty;
+  if (update.difficulty) {
+    if (!lockedDifficulty(next)) {
+      if (next.host && next.host.memberId !== update.memberId) {
+        return "not_master";
+      }
+      lockRoomDifficulty(next, update.difficulty);
+    }
   }
   if (update.current !== undefined) member.current = update.current;
   if (update.total !== undefined) member.total = update.total;

@@ -34,6 +34,18 @@ function mix(hex: string, target: string, amount: number) {
   return `#${c.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 }
 
+function HairCap({ color }: { color: string }) {
+  return (
+    <path
+      d="M42 98 C40 58 58 18 100 16 C142 18 160 58 158 98 C152 70 132 52 100 50 C68 52 48 70 42 98 Z"
+      fill={color}
+      stroke={LINE}
+      strokeWidth="2.2"
+      strokeLinejoin="round"
+    />
+  );
+}
+
 function HairBack({
   style,
   color,
@@ -41,47 +53,48 @@ function HairBack({
   style: MascotOutfit["hair"];
   color: string;
 }) {
-  if (style === "bald") return null;
   if (style === "ponytail") {
     return (
       <g>
-        <ellipse cx="100" cy="64" rx="46" ry="32" fill={color} stroke={LINE} strokeWidth="2.2" />
+        <HairCap color={color} />
         <path
-          d="M128 78 Q164 92 152 148 Q138 126 124 92"
+          d="M130 82 Q174 96 164 168 Q148 140 126 98"
           fill={color}
           stroke={LINE}
           strokeWidth="2.2"
         />
-        <circle cx="148" cy="148" r="8" fill={color} stroke={LINE} strokeWidth="2" />
+        <circle cx="160" cy="168" r="11" fill={color} stroke={LINE} strokeWidth="2" />
       </g>
     );
   }
   if (style === "bun") {
     return (
       <g>
-        <ellipse cx="100" cy="66" rx="44" ry="30" fill={color} stroke={LINE} strokeWidth="2.2" />
-        <circle cx="100" cy="32" r="17" fill={color} stroke={LINE} strokeWidth="2.2" />
-        <circle cx="100" cy="32" r="7" fill="#fff" opacity="0.16" />
+        <HairCap color={color} />
+        <circle cx="100" cy="22" r="20" fill={color} stroke={LINE} strokeWidth="2.2" />
+        <circle cx="100" cy="22" r="8" fill="#fff" opacity="0.18" />
       </g>
     );
   }
   if (style === "curly") {
     return (
       <g stroke={LINE} strokeWidth="2">
-        <circle cx="66" cy="60" r="17" fill={color} />
-        <circle cx="86" cy="42" r="18" fill={color} />
-        <circle cx="114" cy="40" r="19" fill={color} />
-        <circle cx="134" cy="60" r="17" fill={color} />
-        <circle cx="72" cy="82" r="15" fill={color} />
-        <circle cx="128" cy="82" r="15" fill={color} />
-        <circle cx="100" cy="48" r="16" fill={color} />
+        <circle cx="44" cy="72" r="20" fill={color} />
+        <circle cx="58" cy="42" r="20" fill={color} />
+        <circle cx="88" cy="24" r="21" fill={color} />
+        <circle cx="118" cy="22" r="21" fill={color} />
+        <circle cx="146" cy="42" r="20" fill={color} />
+        <circle cx="156" cy="74" r="20" fill={color} />
+        <circle cx="48" cy="100" r="16" fill={color} />
+        <circle cx="152" cy="100" r="16" fill={color} />
+        <circle cx="100" cy="36" r="18" fill={color} />
       </g>
     );
   }
   if (style === "messy") {
     return (
       <path
-        d="M54 88 L58 46 L76 60 L88 30 L102 50 L116 26 L132 54 L148 38 L148 88 Q100 50 54 88 Z"
+        d="M40 100 L44 48 L62 62 L74 18 L92 44 L100 12 L112 40 L128 16 L144 48 L160 36 L162 102 C148 70 124 50 100 48 C76 50 52 70 40 100 Z"
         fill={color}
         stroke={LINE}
         strokeWidth="2.2"
@@ -89,16 +102,46 @@ function HairBack({
       />
     );
   }
+  if (style === "long") {
+    return (
+      <g>
+        <HairCap color={color} />
+        <path
+          d="M44 92 C40 128 48 168 62 188 Q78 168 84 128 L78 96 C64 98 52 96 44 92 Z"
+          fill={color}
+          stroke={LINE}
+          strokeWidth="2.2"
+        />
+        <path
+          d="M156 92 C160 128 152 168 138 188 Q122 168 116 128 L122 96 C136 98 148 96 156 92 Z"
+          fill={color}
+          stroke={LINE}
+          strokeWidth="2.2"
+        />
+      </g>
+    );
+  }
+  return <HairCap color={color} />;
+}
+
+function HairSides({ color }: { color: string }) {
   return (
-    <ellipse
-      cx="100"
-      cy="64"
-      rx="48"
-      ry="34"
-      fill={color}
-      stroke={LINE}
-      strokeWidth="2.2"
-    />
+    <g>
+      <path
+        d="M46 78 C40 102 44 124 58 130 L62 104 C54 98 50 88 48 78 Z"
+        fill={color}
+        stroke={LINE}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M154 78 C160 102 156 124 142 130 L138 104 C146 98 150 88 152 78 Z"
+        fill={color}
+        stroke={LINE}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </g>
   );
 }
 
@@ -109,43 +152,80 @@ function HairFront({
   style: MascotOutfit["hair"];
   color: string;
 }) {
-  if (style === "bald" || style === "bun") return null;
   if (style === "side") {
     return (
-      <path
-        d="M56 80 Q84 48 132 72 Q108 62 78 88 Q62 94 56 80 Z"
-        fill={color}
-        stroke={LINE}
-        strokeWidth="2"
-      />
+      <g>
+        <HairSides color={color} />
+        <path
+          d="M48 76 Q78 38 148 70 Q118 58 86 86 Q64 100 48 76 Z"
+          fill={color}
+          stroke={LINE}
+          strokeWidth="2"
+        />
+      </g>
     );
   }
   if (style === "messy") {
     return (
-      <path
-        d="M60 82 Q86 56 116 74 Q98 64 72 90 Z"
-        fill={color}
-        stroke={LINE}
-        strokeWidth="2"
-      />
+      <g>
+        <HairSides color={color} />
+        <path
+          d="M50 78 L62 52 L76 70 L90 44 L104 66 L118 42 L132 68 L148 54 L152 80 Q124 62 100 70 Q76 62 50 78 Z"
+          fill={color}
+          stroke={LINE}
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
+      </g>
     );
   }
   if (style === "curly") {
     return (
       <g>
-        <circle cx="80" cy="72" r="11" fill={color} stroke={LINE} strokeWidth="1.8" />
-        <circle cx="100" cy="66" r="10" fill={color} stroke={LINE} strokeWidth="1.8" />
-        <circle cx="120" cy="72" r="11" fill={color} stroke={LINE} strokeWidth="1.8" />
+        <HairSides color={color} />
+        <circle cx="72" cy="68" r="13" fill={color} stroke={LINE} strokeWidth="1.8" />
+        <circle cx="94" cy="58" r="12" fill={color} stroke={LINE} strokeWidth="1.8" />
+        <circle cx="116" cy="58" r="12" fill={color} stroke={LINE} strokeWidth="1.8" />
+        <circle cx="136" cy="70" r="13" fill={color} stroke={LINE} strokeWidth="1.8" />
+      </g>
+    );
+  }
+  if (style === "bun") {
+    return (
+      <g>
+        <HairSides color={color} />
+        <path
+          d="M50 74 Q100 46 150 74 Q128 66 100 70 Q72 66 50 74 Z"
+          fill={color}
+          stroke={LINE}
+          strokeWidth="2"
+        />
+      </g>
+    );
+  }
+  if (style === "long") {
+    return (
+      <g>
+        <HairSides color={color} />
+        <path
+          d="M48 74 Q78 44 100 58 Q118 44 152 74 Q130 64 100 72 Q72 64 48 74 Z"
+          fill={color}
+          stroke={LINE}
+          strokeWidth="2"
+        />
       </g>
     );
   }
   return (
-    <path
-      d="M56 78 Q100 48 144 78 Q122 66 100 72 Q78 66 56 78 Z"
-      fill={color}
-      stroke={LINE}
-      strokeWidth="2"
-    />
+    <g>
+      <HairSides color={color} />
+      <path
+        d="M48 76 Q100 42 152 76 Q128 62 100 68 Q72 62 48 76 Z"
+        fill={color}
+        stroke={LINE}
+        strokeWidth="2"
+      />
+    </g>
   );
 }
 
@@ -289,18 +369,18 @@ function Hat({
     return (
       <g>
         <path
-          d="M56 72 Q100 26 144 72 L146 80 Q100 58 54 80 Z"
+          d="M50 58 Q100 6 150 58 L152 68 Q100 42 48 68 Z"
           fill="#3b9eff"
           stroke={LINE}
           strokeWidth="2.2"
         />
-        <ellipse cx="100" cy="78" rx="48" ry="8" fill="#2563eb" />
+        <ellipse cx="100" cy="64" rx="50" ry="8" fill="#2563eb" />
         <rect
-          x={back ? 40 : 126}
-          y="74"
-          width="32"
-          height="8"
-          rx="4"
+          x={back ? 34 : 122}
+          y="60"
+          width="38"
+          height="10"
+          rx="5"
           fill="#3b9eff"
           stroke={LINE}
           strokeWidth="1.6"
@@ -312,13 +392,13 @@ function Hat({
     return (
       <g>
         <path
-          d="M56 80 Q100 22 144 80 Q100 62 56 80 Z"
+          d="M50 66 Q100 8 150 66 Q100 48 50 66 Z"
           fill="#be123c"
           stroke={LINE}
           strokeWidth="2.2"
         />
-        <ellipse cx="100" cy="80" rx="44" ry="8" fill="#9f1239" />
-        <circle cx="100" cy="28" r="9" fill="#fda4af" stroke={LINE} strokeWidth="2" />
+        <ellipse cx="100" cy="66" rx="48" ry="8" fill="#9f1239" />
+        <circle cx="100" cy="14" r="10" fill="#fda4af" stroke={LINE} strokeWidth="2" />
       </g>
     );
   }
@@ -326,29 +406,29 @@ function Hat({
     return (
       <g>
         <path
-          d="M58 80 Q100 34 142 80"
+          d="M52 74 Q100 22 148 74"
           fill="none"
           stroke={LINE}
           strokeWidth="8"
           strokeLinecap="round"
         />
-        <rect x="46" y="78" width="18" height="30" rx="9" fill={LINE} />
-        <rect x="136" y="78" width="18" height="30" rx="9" fill={LINE} />
-        <rect x="50" y="84" width="10" height="18" rx="5" fill="#3b9eff" />
-        <rect x="140" y="84" width="10" height="18" rx="5" fill="#3b9eff" />
+        <rect x="42" y="74" width="20" height="34" rx="10" fill={LINE} />
+        <rect x="138" y="74" width="20" height="34" rx="10" fill={LINE} />
+        <rect x="46" y="80" width="12" height="20" rx="6" fill="#3b9eff" />
+        <rect x="142" y="80" width="12" height="20" rx="6" fill="#3b9eff" />
       </g>
     );
   }
   return (
     <g>
       <path
-        d="M116 40 Q132 22 150 42 Q136 36 128 50 Z"
+        d="M108 34 Q126 16 146 38 Q132 30 122 46 Z"
         fill="#fb7185"
         stroke={LINE}
         strokeWidth="2"
       />
       <path
-        d="M132 22 Q142 6 156 26 Q144 20 138 34 Z"
+        d="M126 16 Q136 2 152 24 Q140 18 132 32 Z"
         fill="#fb7185"
         stroke={LINE}
         strokeWidth="2"
@@ -452,11 +532,20 @@ export function MascotSvg({
         strokeWidth="2.6"
       />
       <ellipse cx="80" cy="70" rx="14" ry="8" fill="#fff" opacity="0.28" />
-      {back && outfit.hair !== "bald" ? (
+      {back ? (
         <g>
-          <ellipse cx="100" cy="78" rx="42" ry="34" fill={hair} />
+          <ellipse cx="100" cy="72" rx="46" ry="40" fill={hair} />
           {outfit.hair === "ponytail" ? (
-            <path d="M108 72 Q138 98 124 156 Q110 128 100 92" fill={hair} />
+            <path d="M112 68 Q150 100 138 168 Q122 136 108 88" fill={hair} />
+          ) : null}
+          {outfit.hair === "long" ? (
+            <>
+              <path d="M50 88 C46 130 54 172 68 192 Q88 168 90 120 L82 90 Z" fill={hair} />
+              <path d="M150 88 C154 130 146 172 132 192 Q112 168 110 120 L118 90 Z" fill={hair} />
+            </>
+          ) : null}
+          {outfit.hair === "bun" ? (
+            <circle cx="100" cy="22" r="18" fill={hair} />
           ) : null}
         </g>
       ) : null}
@@ -473,7 +562,9 @@ export function MascotSvg({
           <Glasses kind={outfit.glasses} />
         </g>
       )}
-      <Hat kind={outfit.hat} back={back} />
+      <g transform={`translate(${outfit.hatOffsetX ?? 0} ${outfit.hatOffsetY ?? 0})`}>
+        <Hat kind={outfit.hat} back={back} />
+      </g>
     </svg>
   );
 }

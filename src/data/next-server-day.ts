@@ -23,7 +23,7 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     kind: "blank",
     prompt: "画像のパスを指定する属性名を入れてください。",
     template: `<img ___="logo.png" alt="POSSE">`,
-    accepted: ["src"],
+    accepted: [["src"]],
     explanation:
       "画像の場所は src 属性で指定します。alt は画像が表示できないときの代替テキストです。",
     xp: 50,
@@ -87,6 +87,23 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     answerIndex: 1,
     explanation:
       "form の中の <button> は type を省略すると submit になります。type=\"submit\" も送信します。type=\"button\" は送信しません。",
+    xp: 50,
+  },
+  {
+    id: "html-choice-form-name",
+    difficulty: "beginner",
+    category: "HTML",
+    kind: "choice",
+    prompt: "このフォームを送信したとき、サーバーに送られる値として正しいのはどれ？",
+    code: `<form>
+  <input type="text" value="Niko">
+  <input type="text" name="username" value="Taro">
+  <button type="submit">送信</button>
+</form>`,
+    choices: ["Nikoだけ", "Taroだけ", "NikoとTaro", "何も送信されない"],
+    answerIndex: 1,
+    explanation:
+      "送信されるのは name がある入力だけです。Niko の欄には name がないので送られず、name=\"username\" の Taro だけが送られます。",
     xp: 50,
   },
   {
@@ -155,9 +172,27 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     kind: "blank",
     prompt: "横方向の中央揃えにする Tailwind クラスを入れてください。",
     template: `<div class="flex ___">`,
-    accepted: ["justify-center"],
+    accepted: [["justify-center"]],
     explanation:
       "flex の主軸（横）で中央に揃えるクラスは justify-center です。",
+    xp: 50,
+  },
+  {
+    id: "css-blank-responsive",
+    difficulty: "intermediate",
+    category: "CSS",
+    kind: "blank",
+    prompt:
+      "スマホでは「スマホ版」だけ、PC（md以上）では「PC版」だけ出るように、class を入れてください。",
+    template: `<p class="___">スマホ版メッセージ</p>
+
+<p class="___">PC版メッセージ</p>`,
+    accepted: [
+      ["block md:hidden", "md:hidden"],
+      ["hidden md:block"],
+    ],
+    explanation:
+      "md: は 768px 以上です。スマホだけ出すなら block md:hidden、PCだけなら hidden md:block です。<p> はもともと block なので、1つ目は md:hidden だけでも大丈夫です。",
     xp: 50,
   },
   {

@@ -50,23 +50,33 @@ export function AnswerPanel({
     );
   }
 
-  if (question.kind === "blank" && draft.kind === "text") {
+  if (question.kind === "blank" && draft.kind === "blanks") {
     const parts = question.template.split("___");
     return (
-      <div className="mt-6 rounded-2xl border border-border bg-surface-elevated p-4">
-        <p className="font-mono text-sm font-semibold leading-loose">
-          {parts[0]}
-          <input
-            type="text"
-            value={draft.value}
-            disabled={locked}
-            onChange={(event) =>
-              onChange({ kind: "text", value: event.target.value })
-            }
-            aria-label="穴埋めの答え"
-            className="mx-1 inline-block w-40 rounded-lg border border-accent/40 bg-accent-soft px-2 py-1 text-center font-mono text-sm font-bold text-accent outline-none focus:border-accent disabled:opacity-70"
-          />
-          {parts.slice(1).join("___")}
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-border bg-surface-elevated p-4">
+        <p className="whitespace-pre-wrap font-mono text-sm font-semibold leading-loose">
+          {parts.map((part, index) => (
+            <span key={index}>
+              {index > 0 ? (
+                <input
+                  type="text"
+                  value={draft.values[index - 1] ?? ""}
+                  disabled={locked}
+                  onChange={(event) => {
+                    const values = [...draft.values];
+                    values[index - 1] = event.target.value;
+                    onChange({ kind: "blanks", values });
+                  }}
+                  aria-label={`穴埋め ${index}つ目`}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="mx-1 inline-block min-w-40 w-48 rounded-lg border border-accent/40 bg-accent-soft px-2 py-1 text-center font-mono text-sm font-bold text-accent outline-none focus:border-accent disabled:opacity-70 sm:w-56"
+                />
+              ) : null}
+              {part}
+            </span>
+          ))}
         </p>
       </div>
     );

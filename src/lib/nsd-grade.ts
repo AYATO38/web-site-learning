@@ -6,6 +6,7 @@ import type {
 export type AnswerDraft =
   | { kind: "choice"; index: number | null }
   | { kind: "text"; value: string }
+  | { kind: "blanks"; values: string[] }
   | { kind: "order"; items: string[] };
 
 export function shuffleItems<T>(items: T[]): T[] {
@@ -32,6 +33,13 @@ export function initialDraft(question: NextServerDayQuestion): AnswerDraft {
   if (question.kind === "choice") {
     return { kind: "choice", index: null };
   }
+  if (question.kind === "blank") {
+    const count = Math.max(1, question.template.split("___").length - 1);
+    return {
+      kind: "blanks",
+      values: Array.from({ length: count }, () => ""),
+    };
+  }
   if (question.kind === "order") {
     return { kind: "order", items: shuffleItems(question.items) };
   }
@@ -50,6 +58,13 @@ export function canSubmitDraft(
 ): boolean {
   if (question.kind === "choice") {
     return draft.kind === "choice" && draft.index !== null;
+  }
+  if (question.kind === "blank") {
+    return (
+      draft.kind === "blanks" &&
+      draft.values.length > 0 &&
+      draft.values.every((value) => value.trim().length > 0)
+    );
   }
   if (question.kind === "order") {
     return draft.kind === "order" && draft.items.length > 0;
@@ -83,7 +98,15 @@ export function normalizeCode(value: string): string {
 }
 
 function normalizeBlank(value: string): string {
-  return value.trim().replace(/^['"]|['"]$/g, "").toLowerCase();
+  return value
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .sort()
+    .join(" ");
 }
 
 function includesNormalized(haystack: string, needle: string): boolean {
@@ -175,11 +198,14 @@ export function gradeAnswer(
       draft.items.every((item, index) => item === question.items[index])
     );
   }
-  if (draft.kind !== "text") return false;
   if (question.kind === "blank") {
-    const got = normalizeBlank(draft.value);
-    return question.accepted.some((item) => normalizeBlank(item) === got);
+    if (draft.kind !== "blanks") return false;
+    return question.accepted.every((accepted, index) => {
+      const got = normalizeBlank(draft.values[index] ?? "");
+      return accepted.some((item) => normalizeBlank(item) === got);
+    });
   }
+  if (draft.kind !== "text") return false;
   return gradeWritten(draft.value, question);
 }
 

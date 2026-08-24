@@ -13,7 +13,7 @@ export const hairStyles = [
   { id: "curly", label: "カール" },
   { id: "ponytail", label: "ポニー" },
   { id: "bun", label: "おだんご" },
-  { id: "bald", label: "なし" },
+  { id: "long", label: "ロング" },
 ] as const;
 
 export const hairColors = [
@@ -93,9 +93,22 @@ export type MascotOutfit = {
   mouth: MouthOption;
   glasses: GlassesOption;
   hat: HatOption;
+  hatOffsetX: number;
+  hatOffsetY: number;
   shirt: ShirtOption;
   blush: boolean;
 };
+
+export const HAT_OFFSET_MAX = 28;
+
+export function clampHatOffset(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.min(
+    HAT_OFFSET_MAX,
+    Math.max(-HAT_OFFSET_MAX, Math.round(parsed)),
+  );
+}
 
 export const defaultOutfit: MascotOutfit = {
   name: "",
@@ -107,6 +120,8 @@ export const defaultOutfit: MascotOutfit = {
   mouth: "smile",
   glasses: "none",
   hat: "none",
+  hatOffsetX: 0,
+  hatOffsetY: 0,
   shirt: "white-tee",
   blush: true,
 };
@@ -131,6 +146,8 @@ export const personalityPresets: {
       mouth: "grin",
       glasses: "none",
       hat: "none",
+      hatOffsetX: 0,
+      hatOffsetY: 0,
       shirt: "hoodie-blue",
       blush: true,
     },
@@ -149,6 +166,8 @@ export const personalityPresets: {
       mouth: "serious",
       glasses: "sun",
       hat: "none",
+      hatOffsetX: 0,
+      hatOffsetY: 0,
       shirt: "black-tee",
       blush: false,
     },
@@ -167,6 +186,8 @@ export const personalityPresets: {
       mouth: "smile",
       glasses: "square",
       hat: "none",
+      hatOffsetX: 0,
+      hatOffsetY: 0,
       shirt: "polo",
       blush: false,
     },
@@ -185,6 +206,8 @@ export const personalityPresets: {
       mouth: "cat",
       glasses: "none",
       hat: "headphones",
+      hatOffsetX: 0,
+      hatOffsetY: 0,
       shirt: "hoodie-navy",
       blush: true,
     },
@@ -203,6 +226,8 @@ export const personalityPresets: {
       mouth: "wow",
       glasses: "round",
       hat: "ribbon",
+      hatOffsetX: 0,
+      hatOffsetY: 0,
       shirt: "hoodie-pink",
       blush: true,
     },
@@ -236,6 +261,8 @@ export function normalizeOutfit(raw: unknown): MascotOutfit {
     mouth: pick(data.mouth, ids(mouthOptions), defaultOutfit.mouth),
     glasses: pick(data.glasses, ids(glassesOptions), defaultOutfit.glasses),
     hat: pick(data.hat, ids(hatOptions), defaultOutfit.hat),
+    hatOffsetX: clampHatOffset(data.hatOffsetX),
+    hatOffsetY: clampHatOffset(data.hatOffsetY),
     shirt: pick(data.shirt, ids(shirtOptions), defaultOutfit.shirt),
     blush: typeof data.blush === "boolean" ? data.blush : defaultOutfit.blush,
   };
@@ -280,6 +307,8 @@ export function randomOutfit(keepName = ""): MascotOutfit {
     mouth: sample(mouthOptions).id,
     glasses: sample(glassesOptions).id,
     hat: sample(hatOptions).id,
+    hatOffsetX: 0,
+    hatOffsetY: 0,
     shirt: sample(shirtOptions).id,
     blush: Math.random() > 0.4,
   };

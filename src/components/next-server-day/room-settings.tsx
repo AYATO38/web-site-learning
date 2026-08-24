@@ -9,6 +9,7 @@ import {
 import {
   GALLERY_MAX,
   isHost,
+  lockedDifficulty,
   quizStarted,
   updateRoomSettings,
   type Room,
@@ -27,7 +28,7 @@ export function RoomSettingsPanel({
   onUpdated: (room: Room) => void;
 }) {
   const master = isHost(room, memberId);
-  const started = quizStarted(room);
+  const started = quizStarted(room) || Boolean(lockedDifficulty(room));
   const canEditTime = master && !started;
   const canEditGallery = master;
   const [busy, setBusy] = useState(false);

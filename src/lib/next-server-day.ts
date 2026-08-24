@@ -22,7 +22,7 @@ export type ChoiceQuestion = QuestionBase & {
 export type BlankQuestion = QuestionBase & {
   kind: "blank";
   template: string;
-  accepted: string[];
+  accepted: string[][];
 };
 
 export type OrderQuestion = QuestionBase & {
@@ -72,12 +72,12 @@ export const DIFFICULTY_LABELS: Record<
 > = {
   beginner: {
     label: "初級",
-    desc: "HTML · 6問",
+    desc: "HTML · 7問",
     kinds: "バグ修正・穴埋め・並び替え・コード・選択",
   },
   intermediate: {
     label: "中級",
-    desc: "Tailwind CSS · 5問",
+    desc: "Tailwind CSS · 6問",
     kinds: "選択・並び替え・バグ修正・コード・穴埋め",
   },
   advanced: {

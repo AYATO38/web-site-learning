@@ -39,7 +39,9 @@ import {
   createRoom,
   fetchRoom,
   isHost,
+  lockedDifficulty,
   normalizeRoomCode,
+  updateRoomSettings,
   updateTeamStatus,
   type Room,
 } from "@/lib/nsd-room";
@@ -57,6 +59,53 @@ const MAX_TEAMS = 8;
 
 function defaultTeamNames(count: number, prev: string[] = []) {
   return Array.from({ length: count }, (_, i) => prev[i] ?? `チーム${i + 1}`);
+}
+
+function DifficultyStartGrid({
+  host,
+  disabled,
+  onPick,
+}: {
+  host: boolean;
+  disabled?: boolean;
+  onPick: (key: Difficulty) => void;
+}) {
+  return (
+    <>
+      <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+        {host
+          ? "難易度を選ぶと、部屋の全員がいっしょにスタートします。"
+          : "ルームマスターが難易度を選ぶまで待ってください。選ばれたら全員いっしょに始まります。"}
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((key) => {
+          const d = DIFFICULTY_LABELS[key];
+          const count = questions.filter((q) => q.difficulty === key).length;
+          const locked = disabled || !host || count === 0;
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={locked}
+              onClick={() => onPick(key)}
+              className="event-card flex flex-col items-center justify-center gap-3 rounded-[1.4rem] p-6 text-center transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <span className="rounded-full bg-accent-soft p-3 text-accent">
+                <Sparkles className="size-6" />
+              </span>
+              <div>
+                <div className="text-lg font-extrabold">{d.label}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{d.desc}</div>
+                <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {d.kinds}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
 }
 
 export default function NextServerDayPage() {
@@ -459,6 +508,26 @@ export default function NextServerDayPage() {
 
   async function joinRoom() {
     await enterRoomByCode(joinCode);
+  }
+
+  async function startAllWithDifficulty(key: Difficulty) {
+    if (!roomId || !memberId) return;
+    if (!room || !isHost(room, memberId)) {
+      setError("難易度を選んでスタートできるのはルームマスターだけです");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await updateRoomSettings(roomId, memberId, {
+        difficulty: key,
+      });
+      setRoom(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "スタートできませんでした");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function chooseTeam(name: string) {
@@ -918,6 +987,18 @@ export default function NextServerDayPage() {
               memberId={memberId}
               onUpdated={setRoom}
             />
+            {isHost(room, memberId) && !lockedDifficulty(room) ? (
+              <div className="mb-6">
+                {error ? (
+                  <p className="mb-3 text-sm font-semibold text-wrong">{error}</p>
+                ) : null}
+                <DifficultyStartGrid
+                  host
+                  disabled={busy}
+                  onPick={(key) => void startAllWithDifficulty(key)}
+                />
+              </div>
+            ) : null}
             <LiveBoard room={room} myTeam={null} myMemberId={memberId} />
           </div>
         )}
@@ -932,7 +1013,11 @@ export default function NextServerDayPage() {
           <EventHero
             backHref="/"
             kicker={`Room ${roomId}`}
-            title="難易度を選ぶ"
+            title={
+              isHost(room, memberId)
+                ? "難易度を選んでスタート"
+                : "スタート待ち"
+            }
             subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"}${isHost(room, memberId) ? " · ルームマスター" : ""} · ${timeLimitLabel(room.timeLimitSeconds)}`}
           />
           <button
@@ -953,57 +1038,15 @@ export default function NextServerDayPage() {
             <LiveBoard room={room} myTeam={myTeam} myMemberId={memberId} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((key) => {
-              const d = DIFFICULTY_LABELS[key];
-              const count = questions.filter((q) => q.difficulty === key).length;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  disabled={count === 0}
-                  onClick={() => {
-                    void (async () => {
-                      const next = await syncStatus({
-                        difficulty: key,
-                        current: 0,
-                        total: count,
-                        combo: 0,
-                        xp: 0,
-                        lastResult: null,
-                        finished: false,
-                      });
-                      const locked =
-                        next?.teams.find((team) => team.name === myTeam)
-                          ?.difficulty ?? key;
-                      setSelectedDifficulty(locked);
-                      setCurrent(0);
-                      setCombo(0);
-                      setBrokenCombo(0);
-                      setXp(0);
-                      setCorrectCount(0);
-                      setBestCombo(0);
-                      setPhase("answering");
-                      setFinished(false);
-                      setTimedOut(false);
-                    })();
-                  }}
-                  className="event-card flex flex-col items-center justify-center gap-3 rounded-[1.4rem] p-6 text-center transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <span className="rounded-full bg-accent-soft p-3 text-accent">
-                    <Sparkles className="size-6" />
-                  </span>
-                  <div>
-                    <div className="text-lg font-extrabold">{d.label}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">{d.desc}</div>
-                    <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {d.kinds}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          {error ? (
+            <p className="mb-3 text-sm font-semibold text-wrong">{error}</p>
+          ) : null}
+
+          <DifficultyStartGrid
+            host={isHost(room, memberId)}
+            disabled={busy}
+            onPick={(key) => void startAllWithDifficulty(key)}
+          />
         </div>
       </EventShell>
     );

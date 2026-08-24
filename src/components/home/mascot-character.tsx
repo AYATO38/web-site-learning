@@ -11,6 +11,8 @@ import {
   hairStyles,
   hasStoredOutfit,
   hatOptions,
+  HAT_OFFSET_MAX,
+  clampHatOffset,
   loadOutfit,
   mouthOptions,
   normalizeOutfit,
@@ -27,7 +29,7 @@ import {
   fetchMe,
   saveAccountOutfit,
 } from "@/lib/auth/client";
-import { ChevronLeft, ChevronRight, Dices, Shirt, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Dices, Minus, Plus, Shirt, Sparkles } from "lucide-react";
 
 function wrapYaw(value: number) {
   return ((value % 360) + 360) % 360;
@@ -82,6 +84,51 @@ function Chip({
     >
       {children}
     </button>
+  );
+}
+
+function OffsetSlider({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-10 shrink-0 text-xs font-semibold text-muted-foreground">
+        {label}
+      </span>
+      <button
+        type="button"
+        aria-label={`${label}を減らす`}
+        onClick={() => onChange(clampHatOffset(value - 2))}
+        className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted disabled:opacity-40"
+        disabled={value <= -HAT_OFFSET_MAX}
+      >
+        <Minus className="size-3.5" />
+      </button>
+      <input
+        type="range"
+        min={-HAT_OFFSET_MAX}
+        max={HAT_OFFSET_MAX}
+        step={1}
+        value={value}
+        onChange={(event) => onChange(clampHatOffset(event.target.value))}
+        className="h-2 flex-1 cursor-pointer accent-[var(--accent,#3b9eff)]"
+      />
+      <button
+        type="button"
+        aria-label={`${label}を増やす`}
+        onClick={() => onChange(clampHatOffset(value + 2))}
+        className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted disabled:opacity-40"
+        disabled={value >= HAT_OFFSET_MAX}
+      >
+        <Plus className="size-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -552,12 +599,38 @@ export function MascotCharacter() {
               <Chip
                 key={opt.id}
                 selected={outfit.hat === opt.id}
-                onClick={() => updateOutfit({ hat: opt.id })}
+                onClick={() =>
+                  updateOutfit({
+                    hat: opt.id,
+                    hatOffsetX: 0,
+                    hatOffsetY: 0,
+                  })
+                }
               >
                 {opt.label}
               </Chip>
             ))}
           </Field>
+          {outfit.hat !== "none" ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-xs font-semibold text-muted-foreground">
+                帽子の位置
+              </legend>
+              <OffsetSlider
+                label="左右"
+                value={outfit.hatOffsetX}
+                onChange={(hatOffsetX) => updateOutfit({ hatOffsetX })}
+              />
+              <OffsetSlider
+                label="上下"
+                value={outfit.hatOffsetY}
+                onChange={(hatOffsetY) => updateOutfit({ hatOffsetY })}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                頭の上に乗る位置へ動かしてください。マイナスで上・左です。
+              </p>
+            </fieldset>
+          ) : null}
 
           <Field label="服">
             {shirtOptions.map((opt) => (
