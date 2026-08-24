@@ -3,6 +3,7 @@ import { Geist_Mono, Inter, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/home/bottom-nav";
 import { ProfileCompletionGate } from "@/components/account/profile-completion-gate";
+import { LeaveGuardProvider } from "@/components/leave-guard";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,9 +33,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${noto.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="app-bg flex min-h-full flex-col">
-        {children}
-        <ProfileCompletionGate />
-        <BottomNav />
+        <LeaveGuardProvider>
+          {children}
+          <ProfileCompletionGate />
+          <BottomNav />
+        </LeaveGuardProvider>
       </body>
     </html>
   );

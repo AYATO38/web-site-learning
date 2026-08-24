@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { Question } from "@/lib/questions";
 import { ChoiceButton } from "@/components/choice-button";
 import { QuestionBubble } from "@/components/question-bubble";
+import { useLockQuizLeave, useRequestLeave } from "@/components/leave-guard";
 import { playWrongSfx } from "@/lib/sfx";
 import { Check, Heart, RotateCcw, X } from "lucide-react";
 
@@ -23,6 +24,8 @@ export function Quiz({
   const [phase, setPhase] = useState<Phase>("answering");
   const [hearts, setHearts] = useState(3);
   const [finished, setFinished] = useState(false);
+  useLockQuizLeave(!finished);
+  const requestLeave = useRequestLeave();
 
   const total = questions.length;
   const question = questions[current];
@@ -93,13 +96,13 @@ export function Quiz({
             )}
             <h2 className="mt-2 text-lg font-black tracking-tight">クイズ</h2>
           </div>
-          <Link
-            href="/"
-            aria-label="ホームに戻る"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-white text-muted-foreground transition-colors hover:text-foreground"
+          <button
+            type="button"
+            onClick={() => requestLeave("/")}
+            className="rounded-full border border-border bg-white px-3.5 py-2 text-sm font-bold text-muted-foreground transition-colors hover:border-wrong hover:text-wrong"
           >
-            <X className="size-6" strokeWidth={3} />
-          </Link>
+            退出
+          </button>
         </div>
         <div className="flex items-center gap-3">
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">

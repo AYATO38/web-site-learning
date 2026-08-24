@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { X, Check, Sparkles, Minus, Plus } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
@@ -13,6 +12,7 @@ import { QuizTimer } from "@/components/next-server-day/quiz-timer";
 import { AnswerPanel } from "@/components/next-server-day/answer-panel";
 import { RoomCodeInput } from "@/components/next-server-day/room-code-input";
 import { RoomSettingsPanel } from "@/components/next-server-day/room-settings";
+import { useLockQuizLeave, useRequestLeave } from "@/components/leave-guard";
 import { useQuestionTimer } from "@/components/next-server-day/use-question-timer";
 import { cn } from "@/lib/utils";
 import {
@@ -147,6 +147,10 @@ export default function NextServerDayPage() {
   const [lastGain, setLastGain] = useState<{ xp: number; bonus: number } | null>(
     null,
   );
+
+  const inQuiz = Boolean(room && myTeam && selectedDifficulty && !finished);
+  useLockQuizLeave(inQuiz);
+  const requestLeave = useRequestLeave();
 
   const activeQuestions = useMemo(
     () =>
@@ -1102,12 +1106,13 @@ export default function NextServerDayPage() {
             </p>
             <h2 className="mt-2 text-lg font-black tracking-tight">みんなでクイズ</h2>
           </div>
-          <Link
-            href="/"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-white text-muted-foreground transition-colors hover:text-foreground"
+          <button
+            type="button"
+            onClick={() => requestLeave("/")}
+            className="rounded-full border border-border bg-white px-3.5 py-2 text-sm font-bold text-muted-foreground transition-colors hover:border-wrong hover:text-wrong"
           >
-            <X className="size-6" strokeWidth={3} />
-          </Link>
+            退出
+          </button>
         </div>
         {timeCap && remaining !== null && phase === "answering" ? (
           <QuizTimer total={timeCap} remaining={remaining} />

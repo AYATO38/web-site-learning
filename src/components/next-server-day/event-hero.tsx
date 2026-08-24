@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { GuardedLink } from "@/components/leave-guard";
 
 export function EventHero({
   kicker = "Next Server Day",
@@ -14,12 +14,12 @@ export function EventHero({
   return (
     <header className="mb-6 min-w-0 px-1 text-center">
       {backHref ? (
-        <Link
+        <GuardedLink
           href={backHref}
           className="mb-4 inline-flex items-center text-sm font-semibold text-muted-foreground hover:text-foreground"
         >
           ← ホームに戻る
-        </Link>
+        </GuardedLink>
       ) : null}
       <p className="section-en">{kicker}</p>
       <h1 className="event-title mt-2">{title}</h1>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useQuizLocked } from "@/components/leave-guard";
 import {
   Home,
   PlayCircle,
@@ -28,8 +29,12 @@ function isActive(pathname: string, href: string) {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const quizLocked = useQuizLocked();
 
-  if (HIDE_NAV_PREFIXES.some((p) => pathname.startsWith(p))) {
+  if (
+    quizLocked ||
+    HIDE_NAV_PREFIXES.some((p) => pathname.startsWith(p))
+  ) {
     return null;
   }
 
