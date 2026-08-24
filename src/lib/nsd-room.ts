@@ -48,6 +48,15 @@ export type Room = {
 export const TEAM_MAX_MEMBERS = 8;
 export const GALLERY_MAX = 20;
 export const DEFAULT_GALLERY_CAPACITY = 8;
+export const ROOM_CODE_LENGTH = 4;
+
+export function normalizeRoomCode(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, ROOM_CODE_LENGTH);
+}
 
 export type CreateRoomOptions = {
   galleryCapacity?: number;
@@ -296,10 +305,13 @@ export async function createRoom(
 }
 
 export async function fetchRoom(id: string): Promise<Room | null> {
-  const res = await fetch(`/api/nsd/rooms/${encodeURIComponent(id)}`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(FETCH_MS),
-  });
+  const res = await fetch(
+    `/api/nsd/rooms/${encodeURIComponent(normalizeRoomCode(id))}`,
+    {
+      cache: "no-store",
+      signal: AbortSignal.timeout(FETCH_MS),
+    },
+  );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error("部屋を取得できませんでした");
   return (await res.json()) as Room;

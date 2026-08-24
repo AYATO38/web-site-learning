@@ -71,6 +71,25 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     xp: 50,
   },
   {
+    id: "html-choice-form-submit",
+    difficulty: "beginner",
+    category: "HTML",
+    kind: "choice",
+    prompt:
+      "このフォームで、クリックしたときに送信される可能性があるボタンはいくつ？",
+    code: `<form action="/quiz" method="post">
+  <input type="text" name="answer">
+  <button>回答する</button>
+  <button type="button">ヒントを見る</button>
+  <button type="submit">次の問題へ</button>
+</form>`,
+    choices: ["1つ", "2つ", "3つ", "0個"],
+    answerIndex: 1,
+    explanation:
+      "form の中の <button> は type を省略すると submit になります。type=\"submit\" も送信します。type=\"button\" は送信しません。",
+    xp: 50,
+  },
+  {
     id: "css-choice",
     difficulty: "intermediate",
     category: "CSS",

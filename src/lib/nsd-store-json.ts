@@ -5,6 +5,7 @@ import {
   applyRoomUpdate,
   normalizeGalleryCapacity,
   normalizeRoom,
+  normalizeRoomCode,
   type CreateRoomOptions,
   type Room,
   type RoomPatchResult,
@@ -82,7 +83,7 @@ function emptyTeam(name: string): TeamStatus {
 }
 
 export async function getRoom(id: string): Promise<Room | undefined> {
-  const code = id.toUpperCase();
+  const code = normalizeRoomCode(id);
   const room = readStore().rooms.find((item) => item.id === code);
   return room ? normalizeRoom(room) : undefined;
 }
@@ -119,7 +120,7 @@ export async function patchTeam(
 ): Promise<RoomPatchResult | undefined> {
   return withLock(() => {
     const store = readStore();
-    const room = store.rooms.find((item) => item.id === id.toUpperCase());
+    const room = store.rooms.find((item) => item.id === normalizeRoomCode(id));
     if (!room) return undefined;
     if (
       !update.settings &&

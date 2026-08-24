@@ -11,6 +11,7 @@ import { EventHero } from "@/components/next-server-day/event-hero";
 import { ResultScreen } from "@/components/next-server-day/result-screen";
 import { QuizTimer } from "@/components/next-server-day/quiz-timer";
 import { AnswerPanel } from "@/components/next-server-day/answer-panel";
+import { RoomCodeInput } from "@/components/next-server-day/room-code-input";
 import { RoomSettingsPanel } from "@/components/next-server-day/room-settings";
 import { useQuestionTimer } from "@/components/next-server-day/use-question-timer";
 import { cn } from "@/lib/utils";
@@ -33,10 +34,12 @@ import {
 import {
   DEFAULT_GALLERY_CAPACITY,
   GALLERY_MAX,
+  ROOM_CODE_LENGTH,
   allTeamsDone,
   createRoom,
   fetchRoom,
   isHost,
+  normalizeRoomCode,
   updateTeamStatus,
   type Room,
 } from "@/lib/nsd-room";
@@ -138,11 +141,10 @@ export default function NextServerDayPage() {
     const savedName = sessionStorage.getItem("nsd-member-name");
     if (savedName) setDisplayName((prev) => prev || savedName);
 
-    const code = new URLSearchParams(window.location.search)
-      .get("room")
-      ?.trim()
-      .toUpperCase();
-    if (code && code.length >= 4) {
+    const code = normalizeRoomCode(
+      new URLSearchParams(window.location.search).get("room") ?? "",
+    );
+    if (code.length === ROOM_CODE_LENGTH) {
       setEntryMode("join");
       setJoinCode(code);
       void enterRoomByCode(code);
@@ -431,8 +433,8 @@ export default function NextServerDayPage() {
   }
 
   async function enterRoomByCode(code: string) {
-    const roomCode = code.trim().toUpperCase();
-    if (roomCode.length < 4) {
+    const roomCode = normalizeRoomCode(code);
+    if (roomCode.length < ROOM_CODE_LENGTH) {
       setError("部屋コードを入力してください");
       return;
     }
@@ -750,14 +752,15 @@ export default function NextServerDayPage() {
                 <span className="text-sm font-bold text-muted-foreground">
                   部屋コード
                 </span>
-                <input
-                  type="text"
+                <RoomCodeInput
                   value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  placeholder="A3K7"
-                  maxLength={6}
-                  className="rounded-xl border border-border bg-surface-elevated px-4 py-5 text-center font-mono text-3xl font-extrabold tracking-[0.35em] text-accent outline-none transition-colors placeholder:text-muted-foreground focus:border-accent"
+                  onChange={setJoinCode}
+                  disabled={busy}
+                  onSubmit={() => void joinRoom()}
                 />
+                <span className="text-center text-xs text-muted-foreground">
+                  4文字です。全角でも入れられます。貼り付けもできます。
+                </span>
               </label>
               {error && (
                 <p className="mt-3 text-sm font-semibold text-wrong">{error}</p>
@@ -765,10 +768,10 @@ export default function NextServerDayPage() {
               <button
                 type="button"
                 onClick={() => void joinRoom()}
-                disabled={busy}
+                disabled={busy || joinCode.length < ROOM_CODE_LENGTH}
                 className={cn(
                   "mt-6 w-full rounded-full py-4 text-lg font-bold",
-                  busy
+                  busy || joinCode.length < ROOM_CODE_LENGTH
                     ? "cursor-not-allowed bg-muted text-muted-foreground"
                     : "event-cta",
                 )}

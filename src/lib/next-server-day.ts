@@ -72,7 +72,7 @@ export const DIFFICULTY_LABELS: Record<
 > = {
   beginner: {
     label: "初級",
-    desc: "HTML · 5問",
+    desc: "HTML · 6問",
     kinds: "バグ修正・穴埋め・並び替え・コード・選択",
   },
   intermediate: {

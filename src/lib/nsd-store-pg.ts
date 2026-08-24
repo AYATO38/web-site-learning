@@ -3,6 +3,7 @@ import {
   applyRoomUpdate,
   normalizeGalleryCapacity,
   normalizeRoom,
+  normalizeRoomCode,
   type CreateRoomOptions,
   type GalleryMember,
   type Room,
@@ -82,7 +83,7 @@ async function pruneExpiredRooms(): Promise<void> {
 export async function getRoom(id: string): Promise<Room | undefined> {
   await pruneExpiredRooms();
   const sql = await ensureDb();
-  const code = id.toUpperCase();
+  const code = normalizeRoomCode(id);
   const rows = (await sql`
     SELECT id, teams, updated_at, time_limit_seconds,
            host_member_id, host_name, gallery_capacity, gallery,
@@ -152,7 +153,7 @@ export async function patchTeam(
   update: RoomUpdate,
 ): Promise<RoomPatchResult | undefined> {
   const sql = await ensureDb();
-  const code = id.toUpperCase();
+  const code = normalizeRoomCode(id);
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const room = await getRoom(code);
