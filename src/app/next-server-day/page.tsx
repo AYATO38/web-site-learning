@@ -1105,7 +1105,7 @@ export default function NextServerDayPage() {
   }
 
   return (
-    <EventShell>
+    <EventShell reserveNav={false}>
       <header className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5 sm:px-6">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
@@ -1139,7 +1139,7 @@ export default function NextServerDayPage() {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-2 sm:px-6 pb-[calc(12rem+env(safe-area-inset-bottom))]">
+      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-2 pb-40 sm:px-6">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-muted-foreground">
             {DIFFICULTY_LABELS[selectedDifficulty].label} ·{" "}
@@ -1189,12 +1189,12 @@ export default function NextServerDayPage() {
 
       <footer
         className={cn(
-          "fixed inset-x-0 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 border-t border-border bg-background/90 backdrop-blur-xl",
+          "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl",
           phase === "correct" && "border-correct/30 bg-correct-surface",
           phase === "wrong" && "border-wrong/30 bg-wrong-surface",
         )}
       >
-        <div className="mx-auto w-full max-w-2xl px-4 py-5 sm:px-6">
+        <div className="mx-auto w-full max-w-2xl px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6">
           {phase !== "answering" && (
             <div
               className={cn(
