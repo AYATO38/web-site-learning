@@ -1,6 +1,12 @@
 export type Difficulty = "beginner" | "intermediate" | "advanced";
 
-export type QuestionKind = "choice" | "blank" | "order" | "bugfix" | "code";
+export type QuestionKind =
+  | "choice"
+  | "blank"
+  | "order"
+  | "bugfix"
+  | "code"
+  | "orderCode";
 
 type QuestionBase = {
   id: string;
@@ -8,13 +14,13 @@ type QuestionBase = {
   category: "HTML" | "CSS" | "JS" | "React";
   kind: QuestionKind;
   prompt: string;
+  code?: string;
   explanation: string;
   xp: number;
 };
 
 export type ChoiceQuestion = QuestionBase & {
   kind: "choice";
-  code?: string;
   choices: [string, string, string, string];
   answerIndex: 0 | 1 | 2 | 3;
 };
@@ -36,6 +42,7 @@ export type BugfixQuestion = QuestionBase & {
   language: "html" | "css" | "js";
   accepted?: string[];
   mustInclude?: string[];
+  mustIncludeClasses?: string[];
   mustIncludeOrdered?: string[];
   mustNotInclude?: string[];
 };
@@ -46,9 +53,22 @@ export type CodeQuestion = QuestionBase & {
   language: "html" | "css" | "js";
   accepted?: string[];
   mustInclude?: string[];
+  mustIncludeClasses?: string[];
   mustIncludeOrdered?: string[];
   mustNotInclude?: string[];
   tests?: { call: string; expected: unknown }[];
+};
+
+export type OrderCodeQuestion = QuestionBase & {
+  kind: "orderCode";
+  codePrompt: string;
+  items: string[];
+  acceptedOrders: string[][];
+  language: "js";
+  accepted?: string[];
+  mustInclude?: string[];
+  mustIncludeOrdered?: string[];
+  mustNotInclude?: string[];
 };
 
 export type NextServerDayQuestion =
@@ -56,7 +76,8 @@ export type NextServerDayQuestion =
   | BlankQuestion
   | OrderQuestion
   | BugfixQuestion
-  | CodeQuestion;
+  | CodeQuestion
+  | OrderCodeQuestion;
 
 export const QUESTION_KIND_LABELS: Record<QuestionKind, string> = {
   choice: "選択",
@@ -64,6 +85,7 @@ export const QUESTION_KIND_LABELS: Record<QuestionKind, string> = {
   order: "並び替え",
   bugfix: "バグ修正",
   code: "コード記述",
+  orderCode: "並び替え＋記述",
 };
 
 export const DIFFICULTY_LABELS: Record<
@@ -72,18 +94,18 @@ export const DIFFICULTY_LABELS: Record<
 > = {
   beginner: {
     label: "初級",
-    desc: "HTML · 7問",
+    desc: "HTML · 6問",
     kinds: "バグ修正・穴埋め・並び替え・コード・選択",
   },
   intermediate: {
     label: "中級",
-    desc: "Tailwind CSS · 6問",
+    desc: "Tailwind CSS · 7問",
     kinds: "選択・並び替え・バグ修正・コード・穴埋め",
   },
   advanced: {
     label: "上級",
-    desc: "JS / React · 3問",
-    kinds: "選択・バグ修正・コード",
+    desc: "JS / React · 4問",
+    kinds: "選択・バグ修正・コード・並び替え＋記述",
   },
 };
 

@@ -1,5 +1,21 @@
 import type { NextServerDayQuestion } from "@/lib/next-server-day";
 
+const jsMemberPartA = `【A】
+card.innerHTML = \`<h3>member.name</h3><p>{member.role}</p>\`;`;
+const jsMemberPartB = `【B】
+const list = document.getElementById("memberList");`;
+const jsMemberPartC = `【C】
+const members = [
+  { name: "田中", role: "デザイナー" },
+  { name: "鈴木", role: "エンジニア" }
+];`;
+const jsMemberPartD = `【D】
+members.forEach((member) => {
+  const card = document.createElement("div");`;
+const jsMemberPartE = `【E】
+  member.appendChild(card);
+});`;
+
 export const nsdQuestions: NextServerDayQuestion[] = [
   {
     id: "html-bugfix",
@@ -33,15 +49,16 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     difficulty: "beginner",
     category: "HTML",
     kind: "order",
-    prompt: "上から表示したい順に並べてください。",
+    prompt: "HTMLファイルの <head> 内の基本的な記述順序を正しく並び替えてください。",
     items: [
-      "<h1>POSSEへようこそ</h1>",
-      "<p>プログラミングを学ぼう</p>",
-      '<a href="/join">参加する</a>',
-      "<footer>© POSSE</footer>",
+      "<head>",
+      '<meta charset="UTF-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      "<title>ページタイトル</title>",
+      "</head>",
     ],
     explanation:
-      "見出し → 本文 → リンク → フッターの順が、上から読む流れとして自然です。",
+      "<head> の中は、文字コード（charset）→ viewport → <title> の順が基本です。charset を先に書くと、そのあとの文字化けを防げます。<title> がタブに出るページタイトルです。",
     xp: 50,
   },
   {
@@ -57,18 +74,6 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     explanation:
       "<h1> が見出し、<p> が段落です。2つを続けて書けばお題どおりになります。",
     xp: 60,
-  },
-  {
-    id: "html-choice",
-    difficulty: "beginner",
-    category: "HTML",
-    kind: "choice",
-    prompt: "ブラウザのタブにページタイトルを出すタグはどれ？",
-    choices: ["<header>", "<title>", "<h1>", "<tab>"],
-    answerIndex: 1,
-    explanation:
-      "<title> はタブや検索結果に出るタイトルです。<h1> はページ内の見出しです。",
-    xp: 50,
   },
   {
     id: "html-choice-form-submit",
@@ -150,6 +155,50 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     xp: 50,
   },
   {
+    id: "css-bugfix-responsive",
+    difficulty: "intermediate",
+    category: "CSS",
+    kind: "bugfix",
+    prompt:
+      "スマホでは縦並び・1列、PC（md以上）では横並び・3列にしたい告知ページです。誤りを3箇所直してください。",
+    starter: `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>イベント告知</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+
+  <nav class="flex">
+    <a href="#" class="flex-col md:flex-row p-2">ホーム</a>
+    <a href="#" class="flex-col md:flex-row p-2">詳細</a>
+  </nav>
+
+  <div class="grid md: grid-cols-3 gap-4 mt-6">
+    <div class="bg-white p-4 rounded shadow">カード1</div>
+    <div class="bg-white p-4 rounded shadow">カード2</div>
+    <div class="bg-white p-4 rounded shadow">カード3</div>
+  </div>
+
+</body>
+</html>`,
+    language: "html",
+    mustInclude: [
+      'name="viewport"',
+      "width=device-width",
+      '<nav class="flex flex-col md:flex-row">',
+      "grid-cols-1 md:grid-cols-3",
+    ],
+    mustNotInclude: [
+      "md: grid-cols",
+      'class="flex-col md:flex-row p-2"',
+    ],
+    explanation:
+      "① <head> に viewport がないとスマホ幅で計算されません。② flex-col / md:flex-row は並びを変えたい親の <nav> に付けます。③ md: のあとにスペースがあるとクラスが無効なので md:grid-cols-3 と書き、スマホは grid-cols-1 です。",
+    xp: 70,
+  },
+  {
     id: "css-code",
     difficulty: "intermediate",
     category: "CSS",
@@ -166,16 +215,27 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     xp: 60,
   },
   {
-    id: "css-blank",
+    id: "css-code-grid",
     difficulty: "intermediate",
     category: "CSS",
-    kind: "blank",
-    prompt: "横方向の中央揃えにする Tailwind クラスを入れてください。",
-    template: `<div class="flex ___">`,
-    accepted: [["justify-center"]],
+    kind: "code",
+    prompt:
+      "div の class に Tailwind を書いてください。Gridはスマホ1列・PC（lg以上）は4列、カード間は16px。ホバーで影を大きくし、変化はなめらかに。",
+    starter: `<div class="">
+  <div>Card</div>
+</div>`,
+    language: "html",
+    mustIncludeClasses: [
+      "grid",
+      "grid-cols-1",
+      "lg:grid-cols-4",
+      "gap-4",
+      "hover:shadow-lg",
+    ],
+    mustInclude: ["transition"],
     explanation:
-      "flex の主軸（横）で中央に揃えるクラスは justify-center です。",
-    xp: 50,
+      "grid がないと grid-cols-1 や gap-4 は効きません。スマホ基準の grid-cols-1 から書き、PCは lg:grid-cols-4。余白16pxは gap-4。ホバーは hover:shadow-lg、なめらかさは transition です。",
+    xp: 60,
   },
   {
     id: "css-blank-responsive",
@@ -183,7 +243,10 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     category: "CSS",
     kind: "blank",
     prompt:
-      "スマホでは「スマホ版」だけ、PC（md以上）では「PC版」だけ出るように、class を入れてください。",
+      "PCとスマホで表示を切り替えろ。スマホでは「スマホ版」だけ、PCでは「PC版」だけ出るように、空欄の class を入れてください。",
+    code: `<p class="________">スマホ版メッセージ</p>
+
+<p class="________">PC版メッセージ</p>`,
     template: `<p class="___">スマホ版メッセージ</p>
 
 <p class="___">PC版メッセージ</p>`,
@@ -192,7 +255,7 @@ export const nsdQuestions: NextServerDayQuestion[] = [
       ["hidden md:block"],
     ],
     explanation:
-      "md: は 768px 以上です。スマホだけ出すなら block md:hidden、PCだけなら hidden md:block です。<p> はもともと block なので、1つ目は md:hidden だけでも大丈夫です。",
+      "正解は <p class=\"block md:hidden\">スマホ版メッセージ</p> と <p class=\"hidden md:block\">PC版メッセージ</p> です。md: は 768px 以上（PC）です。<p> はもともと block なので、1つ目は md:hidden だけでも大丈夫です。",
     xp: 50,
   },
   {
@@ -248,5 +311,52 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     explanation:
       "return n * 2; と書けば、渡した数を 2 倍して返せます。自動採点でいくつか試しています。",
     xp: 70,
+  },
+  {
+    id: "js-order-code-members",
+    difficulty: "advanced",
+    category: "JS",
+    kind: "orderCode",
+    prompt:
+      "配列からメンバーカードを作って画面に足す JS です。パーツを正しい処理順に並べてください。",
+    codePrompt:
+      "正しい順でも TypeError が出ます。バグを直して、動く JavaScript を全部書いてください。",
+    items: [
+      jsMemberPartA,
+      jsMemberPartB,
+      jsMemberPartC,
+      jsMemberPartD,
+      jsMemberPartE,
+    ],
+    acceptedOrders: [
+      [
+        jsMemberPartC,
+        jsMemberPartB,
+        jsMemberPartD,
+        jsMemberPartA,
+        jsMemberPartE,
+      ],
+      [
+        jsMemberPartB,
+        jsMemberPartC,
+        jsMemberPartD,
+        jsMemberPartA,
+        jsMemberPartE,
+      ],
+    ],
+    language: "js",
+    mustInclude: [
+      "田中",
+      "鈴木",
+      'getElementById("memberList")',
+      "forEach",
+      'createElement("div")',
+      "innerHTML",
+      "list.appendChild(card)",
+    ],
+    mustNotInclude: ["member.appendChild"],
+    explanation:
+      "並びは C→B→D→A→E（B と C は逆でも可）。TypeError の原因はパーツ E で、member はデータなので appendChild できません。親の list に list.appendChild(card) とします。",
+    xp: 80,
   },
 ];

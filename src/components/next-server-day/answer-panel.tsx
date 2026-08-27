@@ -71,7 +71,7 @@ export function AnswerPanel({
                   autoCapitalize="off"
                   autoCorrect="off"
                   spellCheck={false}
-                  className="mx-1 inline-block min-w-40 w-48 rounded-lg border border-accent/40 bg-accent-soft px-2 py-1 text-center font-mono text-sm font-bold text-accent outline-none focus:border-accent disabled:opacity-70 sm:w-56"
+                  className="mx-1 inline-block min-w-[12rem] w-[13rem] rounded-lg border border-accent/40 bg-accent-soft px-2 py-1 text-center font-mono text-sm font-bold text-accent outline-none focus:border-accent disabled:opacity-70 sm:w-56"
                 />
               ) : null}
               {part}
@@ -93,6 +93,41 @@ export function AnswerPanel({
     );
   }
 
+  if (question.kind === "orderCode" && draft.kind === "orderCode") {
+    if (draft.step === 1) {
+      return (
+        <div className="mt-6">
+          <p className="mb-2 text-xs font-bold text-muted-foreground">
+            ステップ1 · 並べ替えたら次へ。あとでバグを直して全部書きます
+          </p>
+          <OrderList
+            items={draft.items}
+            locked={locked}
+            phase={phase}
+            onReorder={(items) => onChange({ ...draft, items })}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="mt-6">
+        <label className="mb-2 block text-xs font-bold text-muted-foreground">
+          ステップ2 · バグを直して全部書く
+        </label>
+        <textarea
+          value={draft.value}
+          disabled={locked}
+          onChange={(event) =>
+            onChange({ ...draft, value: event.target.value })
+          }
+          spellCheck={false}
+          rows={Math.min(22, Math.max(12, draft.value.split("\n").length + 1))}
+          className={editorClass}
+        />
+      </div>
+    );
+  }
+
   if (
     (question.kind === "bugfix" || question.kind === "code") &&
     draft.kind === "text"
@@ -111,7 +146,10 @@ export function AnswerPanel({
             onChange({ kind: "text", value: event.target.value })
           }
           spellCheck={false}
-          rows={8}
+          rows={Math.min(
+            22,
+            Math.max(8, (question.starter ?? "").split("\n").length + 1),
+          )}
           className={editorClass}
         />
       </div>

@@ -27,6 +27,7 @@ import {
   earnedXp,
   gradeAnswer,
   initialDraft,
+  advanceOrderCodeDraft,
   questionTimeLimit,
   speedWindowSeconds,
   type AnswerDraft,
@@ -343,6 +344,14 @@ export default function NextServerDayPage() {
 
   function handleCheck() {
     if (!question || !canSubmitDraft(question, draft)) return;
+    if (
+      question.kind === "orderCode" &&
+      draft.kind === "orderCode" &&
+      draft.step === 1
+    ) {
+      setDraft(advanceOrderCodeDraft(draft));
+      return;
+    }
     const isCorrect = gradeAnswer(question, draft);
     if (isCorrect) {
       const gain = earnedXp({
@@ -1134,7 +1143,11 @@ export default function NextServerDayPage() {
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-muted-foreground">
             {DIFFICULTY_LABELS[selectedDifficulty].label} ·{" "}
-            {QUESTION_KIND_LABELS[question.kind]} · もんだい {current + 1} / {total}
+            {question.kind === "orderCode" &&
+            draft.kind === "orderCode"
+              ? `並び替え＋記述 · ステップ ${draft.step}/2`
+              : QUESTION_KIND_LABELS[question.kind]}{" "}
+            · もんだい {current + 1} / {total}
           </p>
           <div className="flex items-center gap-2">
             {combo >= 2 && (
@@ -1152,8 +1165,14 @@ export default function NextServerDayPage() {
           </div>
         </div>
         <QuestionBubble
-          prompt={question.prompt}
-          code={question.kind === "choice" ? question.code : undefined}
+          prompt={
+            question.kind === "orderCode" &&
+            draft.kind === "orderCode" &&
+            draft.step === 2
+              ? question.codePrompt
+              : question.prompt
+          }
+          code={question.code}
         />
 
         <AnswerPanel
@@ -1229,7 +1248,11 @@ export default function NextServerDayPage() {
                   : "cursor-not-allowed bg-muted text-muted-foreground",
               )}
             >
-              これで答える！
+              {question.kind === "orderCode" &&
+              draft.kind === "orderCode" &&
+              draft.step === 1
+                ? "つぎのステップへ"
+                : "これで答える！"}
             </button>
           ) : (
             <button
