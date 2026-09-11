@@ -5,6 +5,7 @@ import { X, Check, Sparkles, Minus, Plus } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { StandingsReveal } from "@/components/next-server-day/standings-reveal";
+import { WaitingReveal } from "@/components/next-server-day/waiting-reveal";
 import { InviteShare } from "@/components/next-server-day/invite-share";
 import { EventShell } from "@/components/next-server-day/event-shell";
 import { EventHero } from "@/components/next-server-day/event-hero";
@@ -42,6 +43,8 @@ import {
   isHost,
   lockedDifficulty,
   normalizeRoomCode,
+  pendingPlayers,
+  readyToReveal,
   roomRanking,
   updateRoomSettings,
   updateTeamStatus,
@@ -55,7 +58,7 @@ import { nsdQuestions } from "@/data/next-server-day";
 
 const questions = nsdQuestions;
 
-type Phase = "answering" | "correct" | "wrong" | "standings";
+type Phase = "answering" | "correct" | "wrong" | "waiting" | "standings";
 type EntryMode = "create" | "join";
 
 const MIN_TEAMS = 2;
@@ -294,6 +297,13 @@ export default function NextServerDayPage() {
     }
   }, [room, memberId, skipAutoSeat, myTeam, inGallery]);
 
+  // Once everyone still active has answered this question too, move on from
+  // the waiting room straight into the standings reveal for everyone.
+  useEffect(() => {
+    if (phase !== "waiting" || !room || !memberId) return;
+    if (readyToReveal(room, memberId, current)) revealStandings(room);
+  }, [phase, room, current, memberId]);
+
   async function syncStatus(partial: {
     difficulty?: Difficulty | null;
     current?: number;
@@ -388,19 +398,25 @@ export default function NextServerDayPage() {
     }
   }
 
-  async function handleReveal() {
-    if (!room) return;
-    const latest =
-      (await syncStatus({
-        current,
-        total,
-        combo,
-        xp,
-        lastResult: phase === "correct" ? "correct" : "wrong",
-        finished: false,
-      })) ?? room;
-    setStandingsSnapshot(roomRanking(latest));
+  function handleFinishQuestion() {
+    setPhase("waiting");
+    void syncStatus({
+      current,
+      total,
+      combo,
+      xp,
+      lastResult: phase === "correct" ? "correct" : "wrong",
+      finished: false,
+    });
+  }
+
+  function revealStandings(source: Room) {
+    setStandingsSnapshot(roomRanking(source));
     setPhase("standings");
+  }
+
+  function handleSkipWaiting() {
+    if (room) revealStandings(room);
   }
 
   function handleContinueFromStandings() {
@@ -1118,6 +1134,21 @@ export default function NextServerDayPage() {
     );
   }
 
+  if (phase === "waiting" && room && memberId) {
+    return (
+      <EventShell reserveNav={false}>
+        <WaitingReveal
+          pending={pendingPlayers(room, memberId, current).filter(
+            (player) => !player.away,
+          )}
+          questionNumber={current + 1}
+          total={total}
+          onSkip={handleSkipWaiting}
+        />
+      </EventShell>
+    );
+  }
+
   if (phase === "standings" && standingsSnapshot && room) {
     return (
       <EventShell reserveNav={false}>
@@ -1292,7 +1323,7 @@ export default function NextServerDayPage() {
           ) : (
             <button
               type="button"
-              onClick={() => void handleReveal()}
+              onClick={handleFinishQuestion}
               className={cn(
                 "w-full rounded-full py-4 text-lg font-bold text-white",
                 phase === "correct"
@@ -1300,7 +1331,7 @@ export default function NextServerDayPage() {
                   : "bg-wrong text-white",
               )}
             >
-              順位を見る
+              回答を確定する！
             </button>
           )}
         </div>

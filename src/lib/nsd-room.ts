@@ -341,6 +341,61 @@ export function roomRanking(room: Room): RankedPlayer[] {
     }));
 }
 
+export type PendingPlayer = {
+  id: string;
+  name: string;
+  outfit: MascotOutfit | null;
+  /** Gone quiet for a while — excluded from what the reveal waits on. */
+  away: boolean;
+};
+
+const WAIT_STALE_MS = 90_000;
+
+/**
+ * Other room members (any team — the leaderboard is room-wide) who have not
+ * yet answered `questionIndex` (0-based) themselves. Someone whose status
+ * hasn't moved in a while is flagged `away` so a closed tab or a player who
+ * never started can't stall everyone else's reveal forever.
+ */
+export function pendingPlayers(
+  room: Room,
+  memberId: string,
+  questionIndex: number,
+  now: number = Date.now(),
+): PendingPlayer[] {
+  const pending: PendingPlayer[] = [];
+  for (const team of room.teams) {
+    for (const member of team.members) {
+      if (member.id === memberId) continue;
+      if (member.total <= 0) continue; // hasn't started this quiz yet
+      const done =
+        member.finished ||
+        member.current > questionIndex ||
+        (member.current === questionIndex && member.lastResult !== null);
+      if (done) continue;
+      pending.push({
+        id: member.id,
+        name: member.name,
+        outfit: member.outfit ?? null,
+        away: now - member.updatedAt > WAIT_STALE_MS,
+      });
+    }
+  }
+  return pending;
+}
+
+/** True once no one still active is left to answer `questionIndex`. */
+export function readyToReveal(
+  room: Room,
+  memberId: string,
+  questionIndex: number,
+  now: number = Date.now(),
+): boolean {
+  return pendingPlayers(room, memberId, questionIndex, now).every(
+    (player) => player.away,
+  );
+}
+
 export function teamFinished(team: TeamStatus): boolean {
   return team.members.length > 0 && team.members.every((member) => member.finished);
 }

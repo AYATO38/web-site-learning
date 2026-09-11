@@ -18,7 +18,7 @@ export function AnswerPanel({
 }: {
   question: NextServerDayQuestion;
   draft: AnswerDraft;
-  phase: "answering" | "correct" | "wrong" | "standings";
+  phase: "answering" | "correct" | "wrong" | "waiting" | "standings";
   onChange: (draft: AnswerDraft) => void;
 }) {
   const locked = phase !== "answering";
@@ -142,7 +142,7 @@ function OrderList({
 }: {
   items: string[];
   locked: boolean;
-  phase: "answering" | "correct" | "wrong" | "standings";
+  phase: "answering" | "correct" | "wrong" | "waiting" | "standings";
   onReorder: (items: string[]) => void;
 }) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
