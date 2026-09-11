@@ -50,6 +50,7 @@ import {
   updateTeamStatus,
   type RankedPlayer,
   type Room,
+  type TeamMember,
 } from "@/lib/nsd-room";
 import { fetchMe } from "@/lib/auth/client";
 import { loadOutfit, normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
@@ -326,6 +327,33 @@ export default function NextServerDayPage() {
     if (room.releasedQuestion >= current) handleContinueFromStandings();
   }, [phase, room, current, memberId, attempt]);
 
+  /**
+   * Patches my own entry in the local room snapshot right away, ahead of the
+   * network round-trip. Without this, a check like `allTeamsDone` reads a
+   * stale "not finished yet" for me until the next poll lands, which can
+   * flash a "waiting for others" state for up to a second right before the
+   * result screen it was about to show anyway.
+   */
+  function patchMyRoomMember(patch: Partial<TeamMember>) {
+    if (!myTeam || !memberId) return;
+    setRoom((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        teams: prev.teams.map((team) =>
+          team.name !== myTeam
+            ? team
+            : {
+                ...team,
+                members: team.members.map((member) =>
+                  member.id === memberId ? { ...member, ...patch } : member,
+                ),
+              },
+        ),
+      };
+    });
+  }
+
   async function syncStatus(partial: {
     difficulty?: Difficulty | null;
     current?: number;
@@ -458,6 +486,7 @@ export default function NextServerDayPage() {
   function handleContinue() {
     if (current + 1 >= total) {
       setFinished(true);
+      patchMyRoomMember({ finished: true });
       void syncStatus({
         current,
         total,
