@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { normalizeTimeLimit } from "@/lib/next-server-day";
 import { normalizeGalleryCapacity } from "@/lib/nsd-room";
 import { createRoom } from "@/lib/nsd-store";
 
@@ -9,7 +8,6 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     teamNames?: unknown;
-    timeLimitSeconds?: unknown;
     galleryCapacity?: unknown;
     host?: { memberId?: unknown; name?: unknown } | null;
   } | null;
@@ -46,8 +44,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const timeLimitSeconds = normalizeTimeLimit(body?.timeLimitSeconds);
-  const room = await createRoom(teamNames, timeLimitSeconds, {
+  const room = await createRoom(teamNames, {
     galleryCapacity: normalizeGalleryCapacity(body?.galleryCapacity),
     host: { memberId: hostId, name: hostName },
   });

@@ -24,10 +24,9 @@ export async function getRoom(id: string): Promise<Room | undefined> {
 
 export async function createRoom(
   teamNames: string[],
-  timeLimitSeconds: number | null = null,
   options: CreateRoomOptions = {},
 ): Promise<Room> {
-  return backend().createRoom(teamNames, timeLimitSeconds, options);
+  return backend().createRoom(teamNames, options);
 }
 
 export async function patchTeam(

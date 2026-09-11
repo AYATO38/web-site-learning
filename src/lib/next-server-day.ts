@@ -90,24 +90,6 @@ export const DIFFICULTY_LABELS: Record<
   },
 };
 
-export const TIME_LIMIT_OPTIONS = [
-  { seconds: null, label: "なし" },
-  { seconds: 10, label: "10秒" },
-  { seconds: 15, label: "15秒" },
-  { seconds: 20, label: "20秒" },
-  { seconds: 30, label: "30秒" },
-] as const;
-
-export const TIME_LIMIT_SECONDS = [10, 15, 20, 30] as const;
-
-export type TimeLimitSeconds = (typeof TIME_LIMIT_SECONDS)[number];
-
-export function normalizeTimeLimit(value: unknown): number | null {
-  return (TIME_LIMIT_SECONDS as readonly number[]).includes(value as number)
-    ? (value as number)
-    : null;
-}
-
-export function timeLimitLabel(seconds: number | null | undefined): string {
-  return seconds ? `1問 ${seconds}秒` : "制限時間なし";
-}
+/** Every question gets the same 3-minute clock — no per-room or per-kind exceptions. */
+export const QUESTION_TIME_LIMIT_SECONDS = 180;
+export const QUESTION_TIME_LIMIT_LABEL = "1問3分";

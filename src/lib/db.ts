@@ -90,6 +90,9 @@ export async function ensureDb(): Promise<Sql> {
       await sql.query(`
         ALTER TABLE accounts ADD COLUMN IF NOT EXISTS department TEXT
       `);
+      await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS released_question INTEGER
+      `);
     })();
   }
   await schemaReady;

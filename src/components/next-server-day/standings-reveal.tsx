@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Minus, Trophy } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Minus,
+  Trophy,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
 import { playResultSfx } from "@/lib/sfx";
@@ -10,11 +18,21 @@ import type { RankedPlayer } from "@/lib/nsd-room";
 const STAGGER_MS = 80;
 const STAGGER_CAP = 12;
 
+export type StandingsRecap = {
+  result: "correct" | "wrong";
+  title: string;
+  gain: { xp: number; bonus: number } | null;
+  explanation: string;
+};
+
 /**
  * Kahoot-style standings shown between questions. The list is a frozen snapshot
  * so the reveal animation is not disturbed by live polling. Rows fly in from the
  * bottom rank up to first place, and each row carries how far the player moved
- * since the previous reveal.
+ * since the previous reveal. During the live synced round the room master
+ * decides when everyone moves on — everyone else sees a passive "waiting for
+ * the master" state instead of a button; a solo replay paces itself, so it
+ * always gets the active button (`canAdvance`).
  */
 export function StandingsReveal({
   snapshot,
@@ -23,7 +41,9 @@ export function StandingsReveal({
   questionNumber,
   total,
   isLast,
-  onContinue,
+  canAdvance,
+  onAdvance,
+  recap,
 }: {
   snapshot: RankedPlayer[];
   previousRanks: Map<string, number> | null;
@@ -31,7 +51,9 @@ export function StandingsReveal({
   questionNumber: number;
   total: number;
   isLast: boolean;
-  onContinue: () => void;
+  canAdvance: boolean;
+  onAdvance: () => void;
+  recap: StandingsRecap | null;
 }) {
   const [reduceMotion] = useState(
     () =>
@@ -57,6 +79,8 @@ export function StandingsReveal({
       <p className="mt-2 text-center text-sm text-muted-foreground">
         第 {questionNumber} 問しゅうりょう · 全 {total} 問
       </p>
+
+      {recap ? <RecapCard recap={recap} /> : null}
 
       <ol className="mt-8 flex flex-col gap-2">
         {snapshot.map((player, index) => {
@@ -109,13 +133,60 @@ export function StandingsReveal({
         })}
       </ol>
 
-      <button
-        type="button"
-        onClick={onContinue}
-        className="event-cta mt-8 w-full rounded-full py-4 text-lg font-bold"
+      {canAdvance ? (
+        <button
+          type="button"
+          onClick={onAdvance}
+          className="event-cta mt-8 w-full rounded-full py-4 text-lg font-bold"
+        >
+          {isLast ? "結果を見る" : "次の問題へ"}
+        </button>
+      ) : (
+        <p className="mt-8 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          ルームマスターが{isLast ? "結果発表" : "次の問題"}に進めるのを待っています
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RecapCard({ recap }: { recap: StandingsRecap }) {
+  const correct = recap.result === "correct";
+  return (
+    <div
+      className={cn(
+        "mt-6 flex items-start gap-3 rounded-2xl border px-4 py-3.5",
+        correct
+          ? "border-correct/30 bg-correct-surface text-accent"
+          : "border-wrong/30 bg-wrong-surface text-wrong",
+      )}
+    >
+      <span
+        className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-full",
+          correct ? "bg-accent text-white" : "bg-wrong text-white",
+        )}
       >
-        {isLast ? "結果を見る" : "次の問題へ"}
-      </button>
+        {correct ? (
+          <Check className="size-5" strokeWidth={3} />
+        ) : (
+          <X className="size-5" strokeWidth={3} />
+        )}
+      </span>
+      <div className="min-w-0">
+        <p className="text-base font-extrabold leading-snug">{recap.title}</p>
+        {correct && recap.gain ? (
+          <p className="mt-1 text-sm font-bold">
+            +{recap.gain.xp} XP
+            {recap.gain.bonus > 0 ? `（速さボーナス +${recap.gain.bonus}）` : ""}
+          </p>
+        ) : null}
+        <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
+          <span className="font-extrabold">解説: </span>
+          {recap.explanation}
+        </p>
+      </div>
     </div>
   );
 }

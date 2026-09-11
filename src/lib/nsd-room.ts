@@ -1,4 +1,4 @@
-import { DIFFICULTY_LABELS, normalizeTimeLimit, type Difficulty } from "@/lib/next-server-day";
+import { DIFFICULTY_LABELS, type Difficulty } from "@/lib/next-server-day";
 import { normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 
 export type LastResult = "correct" | "wrong" | null;
@@ -39,12 +39,13 @@ export type Room = {
   id: string;
   teams: TeamStatus[];
   updatedAt: number;
-  timeLimitSeconds: number | null;
   host: RoomHost | null;
   galleryCapacity: number;
   gallery: GalleryMember[];
   settingsNotice: string | null;
   settingsUpdatedAt: number | null;
+  /** Highest question index (0-based) the room master has released past standings. */
+  releasedQuestion: number;
 };
 
 export const TEAM_MAX_MEMBERS = 8;
@@ -66,9 +67,10 @@ export type CreateRoomOptions = {
 };
 
 export type RoomSettingsPatch = {
-  timeLimitSeconds?: number | null;
   galleryCapacity?: number;
   difficulty?: Difficulty;
+  /** Room master releasing everyone past this question's standings. */
+  releaseQuestion?: number;
 };
 
 export type RoomUpdate = TeamStatusUpdate & {
@@ -83,7 +85,6 @@ export type RoomPatchResult =
   | "gallery_full"
   | "gallery_unavailable"
   | "not_master"
-  | "quiz_started"
   | "gallery_occupied";
 
 export function normalizeGalleryCapacity(value: unknown): number {
@@ -107,6 +108,8 @@ export function normalizeRoom(room: Room): Room {
     settingsNotice: room.settingsNotice ?? null,
     settingsUpdatedAt:
       typeof room.settingsUpdatedAt === "number" ? room.settingsUpdatedAt : null,
+    releasedQuestion:
+      typeof room.releasedQuestion === "number" ? room.releasedQuestion : -1,
   };
 }
 
@@ -180,15 +183,6 @@ export function applyRoomUpdate(
   if (update.settings) {
     if (next.host?.memberId !== update.memberId) return "not_master";
     const notices: string[] = [];
-    if (update.settings.timeLimitSeconds !== undefined) {
-      if (quizStarted(next) || lockedDifficulty(next)) return "quiz_started";
-      next.timeLimitSeconds = normalizeTimeLimit(
-        update.settings.timeLimitSeconds,
-      );
-      notices.push(
-        `制限時間を${next.timeLimitSeconds ? `1問 ${next.timeLimitSeconds}秒` : "なし"}に`,
-      );
-    }
     if (update.settings.galleryCapacity !== undefined) {
       const cap = normalizeGalleryCapacity(update.settings.galleryCapacity);
       if (cap < next.gallery.length) return "gallery_occupied";
@@ -197,6 +191,12 @@ export function applyRoomUpdate(
     }
     if (isDifficulty(update.settings.difficulty) && !lockedDifficulty(next)) {
       lockRoomDifficulty(next, update.settings.difficulty);
+    }
+    if (typeof update.settings.releaseQuestion === "number") {
+      next.releasedQuestion = Math.max(
+        next.releasedQuestion,
+        update.settings.releaseQuestion,
+      );
     }
     if (notices.length === 0) {
       next.updatedAt = Date.now();
@@ -416,7 +416,6 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
 
 export async function createRoom(
   teamNames: string[],
-  timeLimitSeconds: number | null = null,
   options: CreateRoomOptions = {},
 ): Promise<Room> {
   const res = await fetch("/api/nsd/rooms", {
@@ -424,7 +423,6 @@ export async function createRoom(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       teamNames,
-      timeLimitSeconds,
       galleryCapacity: options.galleryCapacity,
       host: options.host,
     }),
@@ -480,5 +478,16 @@ export async function updateRoomSettings(
     teamName: "",
     memberId,
     settings,
+  });
+}
+
+/** Room master only: release everyone from this question's standings. */
+export async function releaseQuestion(
+  roomId: string,
+  memberId: string,
+  questionIndex: number,
+): Promise<Room> {
+  return updateRoomSettings(roomId, memberId, {
+    releaseQuestion: questionIndex,
   });
 }

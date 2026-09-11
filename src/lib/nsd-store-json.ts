@@ -1,6 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { normalizeTimeLimit } from "@/lib/next-server-day";
 import {
   applyRoomUpdate,
   normalizeGalleryCapacity,
@@ -90,7 +89,6 @@ export async function getRoom(id: string): Promise<Room | undefined> {
 
 export async function createRoom(
   teamNames: string[],
-  timeLimitSeconds: number | null = null,
   options: CreateRoomOptions = {},
 ): Promise<Room> {
   return withLock(() => {
@@ -101,12 +99,12 @@ export async function createRoom(
       id: createRoomId(existing),
       teams: teamNames.map(emptyTeam),
       updatedAt: now,
-      timeLimitSeconds: normalizeTimeLimit(timeLimitSeconds),
       host: options.host ?? null,
       galleryCapacity: normalizeGalleryCapacity(options.galleryCapacity),
       gallery: [],
       settingsNotice: null,
       settingsUpdatedAt: null,
+      releasedQuestion: -1,
     });
     store.rooms.push(room);
     writeStore(store);

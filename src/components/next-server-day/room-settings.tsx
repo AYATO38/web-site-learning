@@ -2,18 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import {
-  TIME_LIMIT_OPTIONS,
-  timeLimitLabel,
-} from "@/lib/next-server-day";
-import {
-  GALLERY_MAX,
-  isHost,
-  lockedDifficulty,
-  quizStarted,
-  updateRoomSettings,
-  type Room,
-} from "@/lib/nsd-room";
+import { QUESTION_TIME_LIMIT_LABEL } from "@/lib/next-server-day";
+import { GALLERY_MAX, isHost, updateRoomSettings, type Room } from "@/lib/nsd-room";
 import { Minus, Plus } from "lucide-react";
 
 const NOTICE_MS = 12000;
@@ -28,8 +18,6 @@ export function RoomSettingsPanel({
   onUpdated: (room: Room) => void;
 }) {
   const master = isHost(room, memberId);
-  const started = quizStarted(room) || Boolean(lockedDifficulty(room));
-  const canEditTime = master && !started;
   const canEditGallery = master;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +33,7 @@ export function RoomSettingsPanel({
     now - (room.settingsUpdatedAt ?? 0) < NOTICE_MS;
 
   async function patch(
-    settings: { timeLimitSeconds?: number | null; galleryCapacity?: number },
+    settings: { galleryCapacity?: number },
   ) {
     if (!memberId) return;
     setBusy(true);
@@ -86,39 +74,15 @@ export function RoomSettingsPanel({
       ) : (
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
           {master
-            ? started
-              ? "制限時間はクイズ開始後に変えられません。ギャラリー枠は今すぐ反映されます。"
-              : "ここを変えると、他の参加者の画面にもすぐ反映されます。"
+            ? "ここを変えると、他の参加者の画面にもすぐ反映されます。"
             : "ルームマスターが変えた設定は、この画面にすぐ出ます。"}
         </p>
       )}
 
       <p className="mt-4 text-sm font-bold">1問の制限時間</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        いま: {timeLimitLabel(room.timeLimitSeconds)}
+        {QUESTION_TIME_LIMIT_LABEL}（固定）
       </p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {TIME_LIMIT_OPTIONS.map((option) => {
-          const selected = room.timeLimitSeconds === option.seconds;
-          return (
-            <button
-              key={option.label}
-              type="button"
-              disabled={!canEditTime || busy}
-              onClick={() => void patch({ timeLimitSeconds: option.seconds })}
-              className={cn(
-                "rounded-full px-3.5 py-2 text-sm font-bold",
-                selected
-                  ? "event-cta shadow-none"
-                  : "border border-border bg-surface-elevated text-muted-foreground",
-                (!canEditTime || busy) && !selected && "opacity-50",
-              )}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
 
       <p className="mt-4 text-sm font-bold">ギャラリー枠</p>
       <p className="mt-1 text-xs text-muted-foreground">

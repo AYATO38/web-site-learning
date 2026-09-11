@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Check, Sparkles, Minus, Plus } from "lucide-react";
+import { Sparkles, Minus, Plus } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { StandingsReveal } from "@/components/next-server-day/standings-reveal";
@@ -20,8 +20,7 @@ import { cn } from "@/lib/utils";
 import {
   DIFFICULTY_LABELS,
   QUESTION_KIND_LABELS,
-  TIME_LIMIT_OPTIONS,
-  timeLimitLabel,
+  QUESTION_TIME_LIMIT_LABEL,
   type Difficulty,
 } from "@/lib/next-server-day";
 import {
@@ -45,6 +44,7 @@ import {
   normalizeRoomCode,
   pendingPlayers,
   readyToReveal,
+  releaseQuestion,
   roomRanking,
   updateRoomSettings,
   updateTeamStatus,
@@ -58,7 +58,7 @@ import { nsdQuestions } from "@/data/next-server-day";
 
 const questions = nsdQuestions;
 
-type Phase = "answering" | "correct" | "wrong" | "waiting" | "standings";
+type Phase = "answering" | "waiting" | "standings";
 type EntryMode = "create" | "join";
 
 const MIN_TEAMS = 2;
@@ -144,7 +144,9 @@ export default function NextServerDayPage() {
   const [xp, setXp] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
-  const [timeLimitDraft, setTimeLimitDraft] = useState<number | null>(15);
+  const [roundResult, setRoundResult] = useState<"correct" | "wrong" | null>(
+    null,
+  );
   const [galleryCapacityDraft, setGalleryCapacityDraft] = useState(
     DEFAULT_GALLERY_CAPACITY,
   );
@@ -159,6 +161,7 @@ export default function NextServerDayPage() {
     RankedPlayer[] | null
   >(null);
   const standingsPrevRanks = useRef<Map<string, number> | null>(null);
+  const nameTouchedRef = useRef(false);
 
   const inQuiz = Boolean(room && myTeam && selectedDifficulty && !finished);
   useLockQuizLeave(inQuiz);
@@ -174,7 +177,7 @@ export default function NextServerDayPage() {
 
   const total = activeQuestions.length;
   const question = activeQuestions[current];
-  const timeCap = questionTimeLimit(question?.kind ?? "choice", room?.timeLimitSeconds);
+  const timeCap = questionTimeLimit();
   const questionKey = question ? `${question.id}:${attempt}` : null;
 
   if (question && questionKey !== draftKey) {
@@ -196,9 +199,15 @@ export default function NextServerDayPage() {
     }
     setMemberId(id);
 
+    // A guest name typed last time fills the field right away; the account
+    // name (once it loads) always takes priority as the default, unless the
+    // player has already started typing their own.
+    const savedName = sessionStorage.getItem("nsd-member-name");
+    if (savedName && !nameTouchedRef.current) setDisplayName(savedName);
+
     void fetchMe()
       .then((user) => {
-        if (user) setDisplayName((prev) => prev || user.name);
+        if (user && !nameTouchedRef.current) setDisplayName(user.name);
         setMyOutfit(
           user?.outfit
             ? normalizeOutfit(user.outfit)
@@ -208,8 +217,6 @@ export default function NextServerDayPage() {
       .catch(() => {
         setMyOutfit(loadOutfit());
       });
-    const savedName = sessionStorage.getItem("nsd-member-name");
-    if (savedName) setDisplayName((prev) => prev || savedName);
 
     const code = normalizeRoomCode(
       new URLSearchParams(window.location.search).get("room") ?? "",
@@ -220,6 +227,11 @@ export default function NextServerDayPage() {
       void enterRoomByCode(code);
     }
   }, []);
+
+  function handleDisplayNameChange(value: string) {
+    nameTouchedRef.current = true;
+    setDisplayName(value);
+  }
 
   useEffect(() => {
     if (!roomId) return;
@@ -259,13 +271,10 @@ export default function NextServerDayPage() {
       setCombo(me.combo);
       setXp(me.xp);
       setFinished(me.finished);
-      setPhase(
-        me.lastResult === "correct"
-          ? "correct"
-          : me.lastResult === "wrong"
-            ? "wrong"
-            : "answering",
-      );
+      setRoundResult(me.lastResult);
+      // Already answered this question — the waiting/standings effects below
+      // will sort out whether everyone else (and the master) are ready too.
+      setPhase(me.lastResult ? "waiting" : "answering");
       return;
     }
 
@@ -277,6 +286,7 @@ export default function NextServerDayPage() {
     setCorrectCount(0);
     setBestCombo(0);
     setPhase("answering");
+    setRoundResult(null);
     setFinished(false);
     setTimedOut(false);
     void syncStatus({
@@ -303,6 +313,18 @@ export default function NextServerDayPage() {
     if (phase !== "waiting" || !room || !memberId) return;
     if (readyToReveal(room, memberId, current)) revealStandings(room);
   }, [phase, room, current, memberId]);
+
+  // Only the room master decides when standings end for the original synced
+  // round (attempt 0). Everyone else's screen (the master's included, for a
+  // snappy response to their own click) watches the room-wide release signal
+  // and advances together once it arrives. A solo "もう一度挑戦" replay
+  // (attempt > 0) is excluded — that signal is a leftover from the first
+  // playthrough and would otherwise skip its standings screen instantly; the
+  // player instead gets their own advance button (see canAdvanceStandings).
+  useEffect(() => {
+    if (phase !== "standings" || !room || !memberId || attempt > 0) return;
+    if (room.releasedQuestion >= current) handleContinueFromStandings();
+  }, [phase, room, current, memberId, attempt]);
 
   async function syncStatus(partial: {
     difficulty?: Difficulty | null;
@@ -333,7 +355,8 @@ export default function NextServerDayPage() {
     setBrokenCombo(combo);
     setCombo(0);
     setTimedOut(fromTimeout);
-    setPhase("wrong");
+    setRoundResult("wrong");
+    setPhase("waiting");
     setLastGain(null);
     void playWrongSfx();
     void syncStatus({
@@ -362,7 +385,7 @@ export default function NextServerDayPage() {
     ? earnedXp({
         baseXp: question.xp,
         elapsedMs,
-        windowSeconds: speedWindowSeconds(question.kind, timeCap),
+        windowSeconds: speedWindowSeconds(),
       })
     : null;
 
@@ -373,7 +396,7 @@ export default function NextServerDayPage() {
       const gain = earnedXp({
         baseXp: question.xp,
         elapsedMs,
-        windowSeconds: speedWindowSeconds(question.kind, timeCap),
+        windowSeconds: speedWindowSeconds(),
       });
       const nextCombo = combo + 1;
       const nextXp = xp + gain.xp;
@@ -383,7 +406,8 @@ export default function NextServerDayPage() {
       setCorrectCount((n) => n + 1);
       setBestCombo((best) => Math.max(best, nextCombo));
       setTimedOut(false);
-      setPhase("correct");
+      setRoundResult("correct");
+      setPhase("waiting");
       void playCorrectSfx(nextCombo);
       void syncStatus({
         current,
@@ -396,18 +420,6 @@ export default function NextServerDayPage() {
     } else {
       applyWrong(false);
     }
-  }
-
-  function handleFinishQuestion() {
-    setPhase("waiting");
-    void syncStatus({
-      current,
-      total,
-      combo,
-      xp,
-      lastResult: phase === "correct" ? "correct" : "wrong",
-      finished: false,
-    });
   }
 
   function revealStandings(source: Room) {
@@ -429,6 +441,20 @@ export default function NextServerDayPage() {
     handleContinue();
   }
 
+  /**
+   * Room master only, and only for the original synced round (attempt 0) —
+   * a solo "もう一度挑戦" replay paces itself instead of waiting on a release
+   * signal left over (and already past) from the first playthrough.
+   */
+  function handleMasterAdvance() {
+    if (roomId && memberId && room && attempt === 0 && isHost(room, memberId)) {
+      void releaseQuestion(roomId, memberId, current).catch(() => {
+        /* the room poll will pick up a retry on the next click */
+      });
+    }
+    handleContinueFromStandings();
+  }
+
   function handleContinue() {
     if (current + 1 >= total) {
       setFinished(true);
@@ -446,6 +472,7 @@ export default function NextServerDayPage() {
     setPhase("answering");
     setTimedOut(false);
     setLastGain(null);
+    setRoundResult(null);
     void syncStatus({
       current: nextIndex,
       total,
@@ -468,6 +495,7 @@ export default function NextServerDayPage() {
     setBestCombo(0);
     setTimedOut(false);
     setLastGain(null);
+    setRoundResult(null);
     setStandingsSnapshot(null);
     standingsPrevRanks.current = null;
     setAttempt((n) => n + 1);
@@ -497,6 +525,7 @@ export default function NextServerDayPage() {
     setCorrectCount(0);
     setBestCombo(0);
     setTimedOut(false);
+    setRoundResult(null);
     setStandingsSnapshot(null);
     standingsPrevRanks.current = null;
     window.history.replaceState(null, "", "/next-server-day");
@@ -530,7 +559,7 @@ export default function NextServerDayPage() {
         setError("ルームマスターの名前を入力してください");
         return;
       }
-      const created = await createRoom(names, timeLimitDraft, {
+      const created = await createRoom(names, {
         galleryCapacity: galleryCapacityDraft,
         host: { memberId, name: hostName },
       });
@@ -665,7 +694,7 @@ export default function NextServerDayPage() {
   }
 
   function feedbackTitle() {
-    if (phase === "correct") {
+    if (roundResult === "correct") {
       if (combo >= 2) {
         return `🔥【連続正解！】現在 ${combo}問連続正解中！すごいです！`;
       }
@@ -791,7 +820,7 @@ export default function NextServerDayPage() {
                 <input
                   type="text"
                   value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  onChange={(e) => handleDisplayNameChange(e.target.value)}
                   maxLength={20}
                   placeholder="例: POSSE"
                   className="rounded-xl border border-border bg-surface-elevated px-4 py-3 text-base font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-accent"
@@ -835,32 +864,9 @@ export default function NextServerDayPage() {
                 </p>
               </section>
 
-              <section className="mt-5 event-card rounded-[1.4rem] p-5">
-                <p className="text-sm font-bold text-foreground">1問の制限時間</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  早く答えるほど XP が増えます（最大2倍）。時間切れは不正解です。コード記述・バグ修正は最短60秒、なしも選べます。
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {TIME_LIMIT_OPTIONS.map((option) => {
-                    const selected = timeLimitDraft === option.seconds;
-                    return (
-                      <button
-                        key={option.label}
-                        type="button"
-                        onClick={() => setTimeLimitDraft(option.seconds)}
-                        className={cn(
-                          "rounded-full px-3.5 py-2 text-sm font-bold",
-                          selected
-                            ? "event-cta shadow-none"
-                            : "border border-border bg-surface-elevated text-muted-foreground",
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
+              <p className="mt-5 text-center text-xs text-muted-foreground">
+                {QUESTION_TIME_LIMIT_LABEL}固定です。早く答えるほど XP が増えます（最大2倍）。
+              </p>
 
               {error && (
                 <p className="mt-3 text-sm font-semibold text-wrong">{error}</p>
@@ -929,8 +935,8 @@ export default function NextServerDayPage() {
             title="チームを選ぶ"
             subtitle={
               room.host
-                ? `ルームマスター: ${room.host.name} · ${timeLimitLabel(room.timeLimitSeconds)}`
-                : `名前を入れて、同じチームに複数人で入れます · ${timeLimitLabel(room.timeLimitSeconds)}`
+                ? `ルームマスター: ${room.host.name} · ${QUESTION_TIME_LIMIT_LABEL}`
+                : `名前を入れて、同じチームに複数人で入れます · ${QUESTION_TIME_LIMIT_LABEL}`
             }
           />
 
@@ -949,7 +955,7 @@ export default function NextServerDayPage() {
             <input
               type="text"
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              onChange={(e) => handleDisplayNameChange(e.target.value)}
               maxLength={20}
               placeholder="例: POSSE"
               className="rounded-xl border border-border bg-surface-elevated px-4 py-3 text-base font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-accent"
@@ -1083,7 +1089,7 @@ export default function NextServerDayPage() {
                 ? "難易度を選んでスタート"
                 : "スタート待ち"
             }
-            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"}${isHost(room, memberId) ? " · ルームマスター" : ""} · ${timeLimitLabel(room.timeLimitSeconds)}`}
+            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"}${isHost(room, memberId) ? " · ルームマスター" : ""} · ${QUESTION_TIME_LIMIT_LABEL}`}
           />
           <button
             type="button"
@@ -1159,7 +1165,18 @@ export default function NextServerDayPage() {
           questionNumber={current + 1}
           total={total}
           isLast={current + 1 >= total}
-          onContinue={handleContinueFromStandings}
+          canAdvance={attempt > 0 || isHost(room, memberId)}
+          onAdvance={handleMasterAdvance}
+          recap={
+            roundResult && question
+              ? {
+                  result: roundResult,
+                  title: feedbackTitle(),
+                  gain: roundResult === "correct" ? lastGain : null,
+                  explanation: question.explanation,
+                }
+              : null
+          }
         />
       </EventShell>
     );
@@ -1193,8 +1210,7 @@ export default function NextServerDayPage() {
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground">
-              {roomId} · {myTeam}
-              {timeCap ? ` · 1問 ${timeCap}秒` : ""}
+              {roomId} · {myTeam} · {QUESTION_TIME_LIMIT_LABEL}
             </p>
             <h2 className="mt-2 text-lg font-black tracking-tight">みんなでクイズ</h2>
           </div>
@@ -1206,9 +1222,7 @@ export default function NextServerDayPage() {
             退出
           </button>
         </div>
-        {timeCap && remaining !== null && phase === "answering" ? (
-          <QuizTimer total={timeCap} remaining={remaining} />
-        ) : null}
+        {remaining !== null ? <QuizTimer total={timeCap} remaining={remaining} /> : null}
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
             role="progressbar"
@@ -1235,11 +1249,9 @@ export default function NextServerDayPage() {
               </span>
             )}
             <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-semibold text-foreground">
-              {phase === "correct" && lastGain
-                ? `+${lastGain.xp} XP`
-                : phase === "answering" && previewGain
-                  ? `今 +${previewGain.xp} XP`
-                  : `XP +${question.xp}〜${question.xp * 2}`}
+              {previewGain
+                ? `今 +${previewGain.xp} XP`
+                : `XP +${question.xp}〜${question.xp * 2}`}
             </span>
           </div>
         </div>
@@ -1257,83 +1269,21 @@ export default function NextServerDayPage() {
         </div>
       </section>
 
-      <footer
-        className={cn(
-          "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl",
-          phase === "correct" && "border-correct/30 bg-correct-surface",
-          phase === "wrong" && "border-wrong/30 bg-wrong-surface",
-        )}
-      >
+      <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl">
         <div className="mx-auto w-full max-w-2xl px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6">
-          {phase !== "answering" && (
-            <div
-              className={cn(
-                "mb-4 flex items-start gap-3",
-                phase === "correct" ? "text-accent" : "text-wrong",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-full",
-                  phase === "correct"
-                    ? "bg-accent text-white"
-                    : "bg-wrong text-white",
-                )}
-              >
-                {phase === "correct" ? (
-                  <Check className="size-5" strokeWidth={3} />
-                ) : (
-                  <X className="size-5" strokeWidth={3} />
-                )}
-              </span>
-              <div>
-                <p className="text-lg font-extrabold leading-snug">
-                  {feedbackTitle()}
-                </p>
-                {phase === "correct" && lastGain ? (
-                  <p className="mt-1 text-sm font-bold">
-                    +{lastGain.xp} XP
-                    {lastGain.bonus > 0
-                      ? `（速さボーナス +${lastGain.bonus}）`
-                      : ""}
-                  </p>
-                ) : null}
-                <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground sm:text-base">
-                  <span className="font-extrabold">解説: </span>
-                  {question.explanation}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {phase === "answering" ? (
-            <button
-              type="button"
-              onClick={handleCheck}
-              disabled={!readyToSubmit}
-              className={cn(
-                "w-full rounded-full py-4 text-lg font-bold",
-                readyToSubmit
-                  ? "event-cta"
-                  : "cursor-not-allowed bg-muted text-muted-foreground",
-              )}
-            >
-              これで答える！
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleFinishQuestion}
-              className={cn(
-                "w-full rounded-full py-4 text-lg font-bold text-white",
-                phase === "correct"
-                  ? "event-cta"
-                  : "bg-wrong text-white",
-              )}
-            >
-              回答を確定する！
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleCheck}
+            disabled={!readyToSubmit}
+            className={cn(
+              "w-full rounded-full py-4 text-lg font-bold",
+              readyToSubmit
+                ? "event-cta"
+                : "cursor-not-allowed bg-muted text-muted-foreground",
+            )}
+          >
+            これで答える！
+          </button>
         </div>
       </footer>
     </EventShell>

@@ -1,4 +1,3 @@
-import { normalizeTimeLimit } from "@/lib/next-server-day";
 import {
   applyRoomUpdate,
   normalizeGalleryCapacity,
@@ -20,13 +19,13 @@ type RoomRow = {
   id: string;
   teams: TeamStatus[] | string;
   updated_at: string | number;
-  time_limit_seconds?: number | null;
   host_member_id?: string | null;
   host_name?: string | null;
   gallery_capacity?: number | null;
   gallery?: GalleryMember[] | string | null;
   settings_notice?: string | null;
   settings_updated_at?: string | number | null;
+  released_question?: number | null;
 };
 
 function parseJsonArray<T>(value: T[] | string | null | undefined): T[] {
@@ -41,7 +40,6 @@ function rowToRoom(row: RoomRow): Room {
     id: row.id,
     teams: parseJsonArray<TeamStatus>(row.teams),
     updatedAt: Number(row.updated_at),
-    timeLimitSeconds: normalizeTimeLimit(row.time_limit_seconds),
     host: row.host_member_id
       ? {
           memberId: row.host_member_id,
@@ -54,6 +52,8 @@ function rowToRoom(row: RoomRow): Room {
     settingsUpdatedAt: row.settings_updated_at
       ? Number(row.settings_updated_at)
       : null,
+    releasedQuestion:
+      typeof row.released_question === "number" ? row.released_question : -1,
   });
 }
 
@@ -85,9 +85,9 @@ export async function getRoom(id: string): Promise<Room | undefined> {
   const sql = await ensureDb();
   const code = normalizeRoomCode(id);
   const rows = (await sql`
-    SELECT id, teams, updated_at, time_limit_seconds,
+    SELECT id, teams, updated_at,
            host_member_id, host_name, gallery_capacity, gallery,
-           settings_notice, settings_updated_at
+           settings_notice, settings_updated_at, released_question
     FROM rooms WHERE id = ${code} LIMIT 1
   `) as RoomRow[];
   return rows[0] ? rowToRoom(rows[0]) : undefined;
@@ -95,14 +95,12 @@ export async function getRoom(id: string): Promise<Room | undefined> {
 
 export async function createRoom(
   teamNames: string[],
-  timeLimitSeconds: number | null = null,
   options: CreateRoomOptions = {},
 ): Promise<Room> {
   await pruneExpiredRooms();
   const sql = await ensureDb();
   const now = Date.now();
   const teams = teamNames.map(emptyTeam);
-  const limit = normalizeTimeLimit(timeLimitSeconds);
   const galleryCapacity = normalizeGalleryCapacity(options.galleryCapacity);
   const host = options.host ?? null;
 
@@ -111,31 +109,31 @@ export async function createRoom(
       id: createRoomId(),
       teams,
       updatedAt: now,
-      timeLimitSeconds: limit,
       host,
       galleryCapacity,
       gallery: [],
       settingsNotice: null,
       settingsUpdatedAt: null,
+      releasedQuestion: -1,
     });
     try {
       await sql`
         INSERT INTO rooms (
-          id, teams, updated_at, time_limit_seconds,
+          id, teams, updated_at,
           host_member_id, host_name, gallery_capacity, gallery,
-          settings_notice, settings_updated_at
+          settings_notice, settings_updated_at, released_question
         )
         VALUES (
           ${room.id},
           ${JSON.stringify(room.teams)}::jsonb,
           ${room.updatedAt},
-          ${room.timeLimitSeconds},
           ${room.host?.memberId ?? null},
           ${room.host?.name ?? null},
           ${room.galleryCapacity},
           ${JSON.stringify(room.gallery)}::jsonb,
           ${room.settingsNotice},
-          ${room.settingsUpdatedAt}
+          ${room.settingsUpdatedAt},
+          ${room.releasedQuestion}
         )
       `;
       return room;
@@ -174,17 +172,17 @@ export async function patchTeam(
       SET
         teams = ${JSON.stringify(next.teams)}::jsonb,
         updated_at = ${next.updatedAt},
-        time_limit_seconds = ${next.timeLimitSeconds},
         host_member_id = ${next.host?.memberId ?? null},
         host_name = ${next.host?.name ?? null},
         gallery_capacity = ${next.galleryCapacity},
         gallery = ${JSON.stringify(next.gallery)}::jsonb,
         settings_notice = ${next.settingsNotice},
-        settings_updated_at = ${next.settingsUpdatedAt}
+        settings_updated_at = ${next.settingsUpdatedAt},
+        released_question = ${next.releasedQuestion}
       WHERE id = ${room.id} AND updated_at = ${room.updatedAt}
-      RETURNING id, teams, updated_at, time_limit_seconds,
+      RETURNING id, teams, updated_at,
                 host_member_id, host_name, gallery_capacity, gallery,
-                settings_notice, settings_updated_at
+                settings_notice, settings_updated_at, released_question
     `) as RoomRow[];
 
     if (rows[0]) return rowToRoom(rows[0]);

@@ -52,9 +52,6 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (room === "not_master") {
     return NextResponse.json({ error: "設定を変えられるのはルームマスターだけです" }, { status: 403 });
   }
-  if (room === "quiz_started") {
-    return NextResponse.json({ error: "クイズ開始後は制限時間を変えられません" }, { status: 400 });
-  }
   if (room === "gallery_occupied") {
     return NextResponse.json({ error: "ギャラリーの人数より席を減らせません" }, { status: 400 });
   }

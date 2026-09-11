@@ -18,7 +18,7 @@ export function AnswerPanel({
 }: {
   question: NextServerDayQuestion;
   draft: AnswerDraft;
-  phase: "answering" | "correct" | "wrong" | "waiting" | "standings";
+  phase: "answering" | "waiting" | "standings";
   onChange: (draft: AnswerDraft) => void;
 }) {
   const locked = phase !== "answering";
@@ -87,7 +87,6 @@ export function AnswerPanel({
       <OrderList
         items={draft.items}
         locked={locked}
-        phase={phase}
         onReorder={(items) => onChange({ kind: "order", items })}
       />
     );
@@ -137,12 +136,10 @@ const FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 function OrderList({
   items,
   locked,
-  phase,
   onReorder,
 }: {
   items: string[];
   locked: boolean;
-  phase: "answering" | "correct" | "wrong" | "waiting" | "standings";
   onReorder: (items: string[]) => void;
 }) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -299,12 +296,7 @@ function OrderList({
               locked ? "cursor-default" : "cursor-grab",
               draggingIndex === index &&
                 "cursor-grabbing border-accent bg-accent-soft shadow-xl",
-              draggingIndex !== index &&
-                (phase === "correct"
-                  ? "border-accent/40"
-                  : phase === "wrong"
-                    ? "border-wrong/30"
-                    : "border-border"),
+              draggingIndex !== index && "border-border",
             )}
           >
             <GripVertical

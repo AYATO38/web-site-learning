@@ -1,6 +1,6 @@
-import type {
-  NextServerDayQuestion,
-  QuestionKind,
+import {
+  QUESTION_TIME_LIMIT_SECONDS,
+  type NextServerDayQuestion,
 } from "@/lib/next-server-day";
 
 export type AnswerDraft =
@@ -252,23 +252,13 @@ function orderMatches(got: string[], accepted: string[][]): boolean {
   );
 }
 
-export function kindNeedsLongerTime(kind: QuestionKind): boolean {
-  return kind === "code" || kind === "bugfix";
+/** Every question — regardless of kind — gets the same fixed clock. */
+export function questionTimeLimit(): number {
+  return QUESTION_TIME_LIMIT_SECONDS;
 }
 
-export function questionTimeLimit(
-  kind: QuestionKind,
-  roomLimit: number | null | undefined,
-): number | null {
-  if (!roomLimit) return null;
-  return kindNeedsLongerTime(kind) ? Math.max(roomLimit, 60) : roomLimit;
-}
-
-export function speedWindowSeconds(
-  kind: QuestionKind,
-  timeLimitSeconds: number | null | undefined,
-): number {
-  return timeLimitSeconds ?? (kindNeedsLongerTime(kind) ? 60 : 15);
+export function speedWindowSeconds(): number {
+  return QUESTION_TIME_LIMIT_SECONDS;
 }
 
 export function earnedXp({
