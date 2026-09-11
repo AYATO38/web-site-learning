@@ -330,9 +330,11 @@ export default function NextServerDayPage() {
   /**
    * Patches my own entry in the local room snapshot right away, ahead of the
    * network round-trip. Without this, a check like `allTeamsDone` reads a
-   * stale "not finished yet" for me until the next poll lands, which can
-   * flash a "waiting for others" state for up to a second right before the
-   * result screen it was about to show anyway.
+   * stale "not finished yet" for me until the next poll lands (flashing a
+   * "waiting for others" state right before the result screen it was about
+   * to show anyway) — and if I'm the last one to answer, the standings
+   * reveal that fires immediately after would compute everyone's rank from
+   * a room snapshot that doesn't even include my own just-submitted score.
    */
   function patchMyRoomMember(patch: Partial<TeamMember>) {
     if (!myTeam || !memberId) return;
@@ -387,6 +389,7 @@ export default function NextServerDayPage() {
     setPhase("waiting");
     setLastGain(null);
     void playWrongSfx();
+    patchMyRoomMember({ current, total, combo: 0, xp, lastResult: "wrong" });
     void syncStatus({
       current,
       total,
@@ -437,6 +440,13 @@ export default function NextServerDayPage() {
       setRoundResult("correct");
       setPhase("waiting");
       void playCorrectSfx(nextCombo);
+      patchMyRoomMember({
+        current,
+        total,
+        combo: nextCombo,
+        xp: nextXp,
+        lastResult: "correct",
+      });
       void syncStatus({
         current,
         total,

@@ -1,4 +1,8 @@
-import { DIFFICULTY_LABELS, type Difficulty } from "@/lib/next-server-day";
+import {
+  DIFFICULTY_LABELS,
+  QUESTION_TIME_LIMIT_SECONDS,
+  type Difficulty,
+} from "@/lib/next-server-day";
 import { normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 
 export type LastResult = "correct" | "wrong" | null;
@@ -349,7 +353,12 @@ export type PendingPlayer = {
   away: boolean;
 };
 
-const WAIT_STALE_MS = 90_000;
+// Must stay comfortably above the question's own time limit: a player still
+// legitimately thinking (no network activity yet, but well within their
+// allowed time) must never be mistaken for "away" and skipped past. The
+// grace period beyond the time limit covers the trip for their own
+// timeout/answer sync to land.
+const WAIT_STALE_MS = (QUESTION_TIME_LIMIT_SECONDS + 30) * 1000;
 
 /**
  * Other room members (any team — the leaderboard is room-wide) who have not
