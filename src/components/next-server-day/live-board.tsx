@@ -6,6 +6,7 @@ import {
   type TeamMember,
 } from "@/lib/nsd-room";
 import { HostMark } from "@/components/next-server-day/host-mark";
+import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
 
 function statusClass(member: TeamMember) {
   if (member.finished || member.lastResult === "correct") {
@@ -79,9 +80,17 @@ export function LiveBoard({
                       key={member.id}
                       className="flex items-center justify-between gap-2"
                     >
-                      <p className="truncate text-xs font-semibold text-foreground">
-                        {member.name}
-                        {member.id === myMemberId ? "（自分）" : ""}
+                      <p className="flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold text-foreground">
+                        <PlayerAvatar
+                          outfit={member.outfit}
+                          name={member.name}
+                          size="sm"
+                          className="size-6 ring-1"
+                        />
+                        <span className="truncate">
+                          {member.name}
+                          {member.id === myMemberId ? "（自分）" : ""}
+                        </span>
                         <HostMark room={room} memberId={member.id} />
                       </p>
                       <div className="flex shrink-0 items-center gap-2">

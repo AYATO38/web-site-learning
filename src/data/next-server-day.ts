@@ -313,14 +313,12 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     xp: 70,
   },
   {
-    id: "js-order-code-members",
+    id: "js-order-members",
     difficulty: "advanced",
     category: "JS",
-    kind: "orderCode",
+    kind: "order",
     prompt:
       "配列からメンバーカードを作って画面に足す JS です。パーツを正しい処理順に並べてください。",
-    codePrompt:
-      "正しい順でも TypeError が出ます。バグを直して、動く JavaScript を全部書いてください。",
     items: [
       jsMemberPartA,
       jsMemberPartB,
@@ -344,6 +342,29 @@ export const nsdQuestions: NextServerDayQuestion[] = [
         jsMemberPartE,
       ],
     ],
+    explanation:
+      "データ members（C）と親要素 list（B）を先に用意し、forEach（D）でカードを作り、innerHTML（A）を入れて、最後に画面へ追加（E）します。B と C はどちらが先でも大丈夫です。",
+    xp: 50,
+  },
+  {
+    id: "js-bugfix-members",
+    difficulty: "advanced",
+    category: "JS",
+    kind: "bugfix",
+    prompt:
+      "正しい順でも TypeError が出ます。バグを直して、動く JavaScript を全部書いてください。",
+    starter: `const members = [
+  { name: "田中", role: "デザイナー" },
+  { name: "鈴木", role: "エンジニア" }
+];
+
+const list = document.getElementById("memberList");
+
+members.forEach((member) => {
+  const card = document.createElement("div");
+  card.innerHTML = \`<h3>member.name</h3><p>{member.role}</p>\`;
+  member.appendChild(card);
+});`,
     language: "js",
     mustInclude: [
       "田中",
@@ -356,7 +377,7 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     ],
     mustNotInclude: ["member.appendChild"],
     explanation:
-      "並びは C→B→D→A→E（B と C は逆でも可）。TypeError の原因はパーツ E で、member はデータなので appendChild できません。親の list に list.appendChild(card) とします。",
-    xp: 80,
+      "TypeError の原因は member.appendChild です。member はデータなので appendChild できません。親の list に list.appendChild(card) とします。",
+    xp: 70,
   },
 ];

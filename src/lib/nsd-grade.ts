@@ -7,8 +7,7 @@ export type AnswerDraft =
   | { kind: "choice"; index: number | null }
   | { kind: "text"; value: string }
   | { kind: "blanks"; values: string[] }
-  | { kind: "order"; items: string[] }
-  | { kind: "orderCode"; step: 1 | 2; items: string[]; value: string };
+  | { kind: "order"; items: string[] };
 
 export function shuffleItems<T>(items: T[]): T[] {
   const next = [...items];
@@ -44,14 +43,6 @@ export function initialDraft(question: NextServerDayQuestion): AnswerDraft {
   if (question.kind === "order") {
     return { kind: "order", items: shuffleItems(question.items) };
   }
-  if (question.kind === "orderCode") {
-    return {
-      kind: "orderCode",
-      step: 1,
-      items: shuffleItems(question.items),
-      value: "",
-    };
-  }
   const starter =
     question.kind === "bugfix"
       ? question.starter
@@ -77,11 +68,6 @@ export function canSubmitDraft(
   }
   if (question.kind === "order") {
     return draft.kind === "order" && draft.items.length > 0;
-  }
-  if (question.kind === "orderCode") {
-    if (draft.kind !== "orderCode") return false;
-    if (draft.step === 1) return draft.items.length > 0;
-    return draft.value.trim().length > 0;
   }
   return draft.kind === "text" && draft.value.trim().length > 0;
 }
@@ -238,8 +224,11 @@ export function gradeAnswer(
     return draft.kind === "choice" && draft.index === question.answerIndex;
   }
   if (question.kind === "order") {
+    if (draft.kind !== "order") return false;
+    if (question.acceptedOrders?.length) {
+      return orderMatches(draft.items, question.acceptedOrders);
+    }
     return (
-      draft.kind === "order" &&
       draft.items.length === question.items.length &&
       draft.items.every((item, index) => item === question.items[index])
     );
@@ -251,32 +240,8 @@ export function gradeAnswer(
       return accepted.some((item) => normalizeBlank(item) === got);
     });
   }
-  if (question.kind === "orderCode") {
-    if (draft.kind !== "orderCode") return false;
-    return (
-      orderMatches(draft.items, question.acceptedOrders) &&
-      gradeWritten(draft.value, question)
-    );
-  }
   if (draft.kind !== "text") return false;
   return gradeWritten(draft.value, question);
-}
-
-export function stripPartLabel(item: string): string {
-  return item.replace(/^【[A-Z]】\s*/, "").trimEnd();
-}
-
-export function assembleOrderedCode(items: string[]): string {
-  return items.map(stripPartLabel).join("\n\n");
-}
-
-export function advanceOrderCodeDraft(draft: AnswerDraft): AnswerDraft {
-  if (draft.kind !== "orderCode" || draft.step !== 1) return draft;
-  return {
-    ...draft,
-    step: 2,
-    value: assembleOrderedCode(draft.items),
-  };
 }
 
 function orderMatches(got: string[], accepted: string[][]): boolean {
@@ -288,7 +253,7 @@ function orderMatches(got: string[], accepted: string[][]): boolean {
 }
 
 export function kindNeedsLongerTime(kind: QuestionKind): boolean {
-  return kind === "code" || kind === "bugfix" || kind === "orderCode";
+  return kind === "code" || kind === "bugfix";
 }
 
 export function questionTimeLimit(
@@ -296,7 +261,6 @@ export function questionTimeLimit(
   roomLimit: number | null | undefined,
 ): number | null {
   if (!roomLimit) return null;
-  if (kind === "orderCode") return Math.max(roomLimit, 90);
   return kindNeedsLongerTime(kind) ? Math.max(roomLimit, 60) : roomLimit;
 }
 
@@ -304,7 +268,6 @@ export function speedWindowSeconds(
   kind: QuestionKind,
   timeLimitSeconds: number | null | undefined,
 ): number {
-  if (kind === "orderCode") return timeLimitSeconds ?? 90;
   return timeLimitSeconds ?? (kindNeedsLongerTime(kind) ? 60 : 15);
 }
 

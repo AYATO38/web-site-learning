@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Check, Sparkles, Minus, Plus } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
+import { StandingsReveal } from "@/components/next-server-day/standings-reveal";
 import { InviteShare } from "@/components/next-server-day/invite-share";
 import { EventShell } from "@/components/next-server-day/event-shell";
 import { EventHero } from "@/components/next-server-day/event-hero";
@@ -27,7 +28,6 @@ import {
   earnedXp,
   gradeAnswer,
   initialDraft,
-  advanceOrderCodeDraft,
   questionTimeLimit,
   speedWindowSeconds,
   type AnswerDraft,
@@ -42,17 +42,20 @@ import {
   isHost,
   lockedDifficulty,
   normalizeRoomCode,
+  roomRanking,
   updateRoomSettings,
   updateTeamStatus,
+  type RankedPlayer,
   type Room,
 } from "@/lib/nsd-room";
 import { fetchMe } from "@/lib/auth/client";
+import { loadOutfit, normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 import { playCorrectSfx, playWrongSfx } from "@/lib/sfx";
 import { nsdQuestions } from "@/data/next-server-day";
 
 const questions = nsdQuestions;
 
-type Phase = "answering" | "correct" | "wrong";
+type Phase = "answering" | "correct" | "wrong" | "standings";
 type EntryMode = "create" | "join";
 
 const MIN_TEAMS = 2;
@@ -115,6 +118,7 @@ export default function NextServerDayPage() {
   const [myTeam, setMyTeam] = useState<string | null>(null);
   const [memberId, setMemberId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [myOutfit, setMyOutfit] = useState<MascotOutfit | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const [joinCode, setJoinCode] = useState("");
@@ -148,6 +152,10 @@ export default function NextServerDayPage() {
   const [lastGain, setLastGain] = useState<{ xp: number; bonus: number } | null>(
     null,
   );
+  const [standingsSnapshot, setStandingsSnapshot] = useState<
+    RankedPlayer[] | null
+  >(null);
+  const standingsPrevRanks = useRef<Map<string, number> | null>(null);
 
   const inQuiz = Boolean(room && myTeam && selectedDifficulty && !finished);
   useLockQuizLeave(inQuiz);
@@ -188,9 +196,14 @@ export default function NextServerDayPage() {
     void fetchMe()
       .then((user) => {
         if (user) setDisplayName((prev) => prev || user.name);
+        setMyOutfit(
+          user?.outfit
+            ? normalizeOutfit(user.outfit)
+            : loadOutfit(user?.id ?? null),
+        );
       })
       .catch(() => {
-        /* guest is fine */
+        setMyOutfit(loadOutfit());
       });
     const savedName = sessionStorage.getItem("nsd-member-name");
     if (savedName) setDisplayName((prev) => prev || savedName);
@@ -296,6 +309,7 @@ export default function NextServerDayPage() {
         teamName: myTeam,
         memberId,
         memberName: displayName.trim() || undefined,
+        outfit: myOutfit ?? undefined,
         ...partial,
       });
       setRoom(next);
@@ -344,14 +358,6 @@ export default function NextServerDayPage() {
 
   function handleCheck() {
     if (!question || !canSubmitDraft(question, draft)) return;
-    if (
-      question.kind === "orderCode" &&
-      draft.kind === "orderCode" &&
-      draft.step === 1
-    ) {
-      setDraft(advanceOrderCodeDraft(draft));
-      return;
-    }
     const isCorrect = gradeAnswer(question, draft);
     if (isCorrect) {
       const gain = earnedXp({
@@ -380,6 +386,31 @@ export default function NextServerDayPage() {
     } else {
       applyWrong(false);
     }
+  }
+
+  async function handleReveal() {
+    if (!room) return;
+    const latest =
+      (await syncStatus({
+        current,
+        total,
+        combo,
+        xp,
+        lastResult: phase === "correct" ? "correct" : "wrong",
+        finished: false,
+      })) ?? room;
+    setStandingsSnapshot(roomRanking(latest));
+    setPhase("standings");
+  }
+
+  function handleContinueFromStandings() {
+    if (standingsSnapshot) {
+      standingsPrevRanks.current = new Map(
+        standingsSnapshot.map((player, index) => [player.id, index]),
+      );
+    }
+    setStandingsSnapshot(null);
+    handleContinue();
   }
 
   function handleContinue() {
@@ -421,6 +452,8 @@ export default function NextServerDayPage() {
     setBestCombo(0);
     setTimedOut(false);
     setLastGain(null);
+    setStandingsSnapshot(null);
+    standingsPrevRanks.current = null;
     setAttempt((n) => n + 1);
     void syncStatus({
       current: 0,
@@ -448,6 +481,8 @@ export default function NextServerDayPage() {
     setCorrectCount(0);
     setBestCombo(0);
     setTimedOut(false);
+    setStandingsSnapshot(null);
+    standingsPrevRanks.current = null;
     window.history.replaceState(null, "", "/next-server-day");
   }
 
@@ -561,6 +596,7 @@ export default function NextServerDayPage() {
         teamName: name,
         memberId,
         memberName: playerName,
+        outfit: myOutfit ?? undefined,
       });
       setRoom(next);
       setSkipAutoSeat(false);
@@ -1082,6 +1118,22 @@ export default function NextServerDayPage() {
     );
   }
 
+  if (phase === "standings" && standingsSnapshot && room) {
+    return (
+      <EventShell reserveNav={false}>
+        <StandingsReveal
+          snapshot={standingsSnapshot}
+          previousRanks={standingsPrevRanks.current}
+          myMemberId={memberId}
+          questionNumber={current + 1}
+          total={total}
+          isLast={current + 1 >= total}
+          onContinue={handleContinueFromStandings}
+        />
+      </EventShell>
+    );
+  }
+
   if (!question) {
     return (
       <EventShell>
@@ -1143,11 +1195,7 @@ export default function NextServerDayPage() {
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-muted-foreground">
             {DIFFICULTY_LABELS[selectedDifficulty].label} ·{" "}
-            {question.kind === "orderCode" &&
-            draft.kind === "orderCode"
-              ? `並び替え＋記述 · ステップ ${draft.step}/2`
-              : QUESTION_KIND_LABELS[question.kind]}{" "}
-            · もんだい {current + 1} / {total}
+            {QUESTION_KIND_LABELS[question.kind]} · もんだい {current + 1} / {total}
           </p>
           <div className="flex items-center gap-2">
             {combo >= 2 && (
@@ -1164,16 +1212,7 @@ export default function NextServerDayPage() {
             </span>
           </div>
         </div>
-        <QuestionBubble
-          prompt={
-            question.kind === "orderCode" &&
-            draft.kind === "orderCode" &&
-            draft.step === 2
-              ? question.codePrompt
-              : question.prompt
-          }
-          code={question.code}
-        />
+        <QuestionBubble prompt={question.prompt} code={question.code} />
 
         <AnswerPanel
           question={question}
@@ -1248,16 +1287,12 @@ export default function NextServerDayPage() {
                   : "cursor-not-allowed bg-muted text-muted-foreground",
               )}
             >
-              {question.kind === "orderCode" &&
-              draft.kind === "orderCode" &&
-              draft.step === 1
-                ? "つぎのステップへ"
-                : "これで答える！"}
+              これで答える！
             </button>
           ) : (
             <button
               type="button"
-              onClick={handleContinue}
+              onClick={() => void handleReveal()}
               className={cn(
                 "w-full rounded-full py-4 text-lg font-bold text-white",
                 phase === "correct"
@@ -1265,7 +1300,7 @@ export default function NextServerDayPage() {
                   : "bg-wrong text-white",
               )}
             >
-              {current + 1 >= total ? "結果を見る" : "つぎへ！"}
+              順位を見る
             </button>
           )}
         </div>

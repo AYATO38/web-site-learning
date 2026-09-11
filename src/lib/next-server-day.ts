@@ -1,12 +1,6 @@
 export type Difficulty = "beginner" | "intermediate" | "advanced";
 
-export type QuestionKind =
-  | "choice"
-  | "blank"
-  | "order"
-  | "bugfix"
-  | "code"
-  | "orderCode";
+export type QuestionKind = "choice" | "blank" | "order" | "bugfix" | "code";
 
 type QuestionBase = {
   id: string;
@@ -34,6 +28,7 @@ export type BlankQuestion = QuestionBase & {
 export type OrderQuestion = QuestionBase & {
   kind: "order";
   items: string[];
+  acceptedOrders?: string[][];
 };
 
 export type BugfixQuestion = QuestionBase & {
@@ -59,25 +54,12 @@ export type CodeQuestion = QuestionBase & {
   tests?: { call: string; expected: unknown }[];
 };
 
-export type OrderCodeQuestion = QuestionBase & {
-  kind: "orderCode";
-  codePrompt: string;
-  items: string[];
-  acceptedOrders: string[][];
-  language: "js";
-  accepted?: string[];
-  mustInclude?: string[];
-  mustIncludeOrdered?: string[];
-  mustNotInclude?: string[];
-};
-
 export type NextServerDayQuestion =
   | ChoiceQuestion
   | BlankQuestion
   | OrderQuestion
   | BugfixQuestion
-  | CodeQuestion
-  | OrderCodeQuestion;
+  | CodeQuestion;
 
 export const QUESTION_KIND_LABELS: Record<QuestionKind, string> = {
   choice: "選択",
@@ -85,7 +67,6 @@ export const QUESTION_KIND_LABELS: Record<QuestionKind, string> = {
   order: "並び替え",
   bugfix: "バグ修正",
   code: "コード記述",
-  orderCode: "並び替え＋記述",
 };
 
 export const DIFFICULTY_LABELS: Record<
@@ -104,8 +85,8 @@ export const DIFFICULTY_LABELS: Record<
   },
   advanced: {
     label: "上級",
-    desc: "JS / React · 4問",
-    kinds: "選択・バグ修正・コード・並び替え＋記述",
+    desc: "JS / React · 5問",
+    kinds: "選択・バグ修正・コード・並び替え",
   },
 };
 

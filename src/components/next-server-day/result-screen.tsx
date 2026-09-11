@@ -12,6 +12,7 @@ import {
   type TeamStatus,
 } from "@/lib/nsd-room";
 import { LiveBoard } from "@/components/next-server-day/live-board";
+import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
 import {
   DRUMROLL_MS,
   playDrumrollSfx,
@@ -268,14 +269,26 @@ function RankRow({
           <p className="truncate text-xs text-muted-foreground">
             {team.difficulty ? DIFFICULTY_LABELS[team.difficulty].label : "未挑戦"}
             {` · ${team.members.length}人`}
-            {` · ${team.members
-              .map((member) =>
-                room.host?.memberId === member.id
-                  ? `${member.name}（ルームマスター）`
-                  : member.name,
-              )
-              .join("、")}`}
           </p>
+          <ul className="mt-1.5 flex flex-wrap gap-1.5">
+            {team.members.map((member) => (
+              <li
+                key={member.id}
+                className="flex items-center gap-1 rounded-full bg-background/70 py-0.5 pr-2 pl-0.5"
+              >
+                <PlayerAvatar
+                  outfit={member.outfit}
+                  name={member.name}
+                  size="sm"
+                  className="size-5 ring-1"
+                />
+                <span className="text-[11px] font-semibold">
+                  {member.name}
+                  {room.host?.memberId === member.id ? "（マスター）" : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
       <p className="shrink-0 text-base font-black tabular-nums">{xp} XP</p>

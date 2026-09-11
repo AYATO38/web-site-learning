@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { ChoiceButton } from "@/components/choice-button";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ export function AnswerPanel({
 }: {
   question: NextServerDayQuestion;
   draft: AnswerDraft;
-  phase: "answering" | "correct" | "wrong";
+  phase: "answering" | "correct" | "wrong" | "standings";
   onChange: (draft: AnswerDraft) => void;
 }) {
   const locked = phase !== "answering";
@@ -93,41 +93,6 @@ export function AnswerPanel({
     );
   }
 
-  if (question.kind === "orderCode" && draft.kind === "orderCode") {
-    if (draft.step === 1) {
-      return (
-        <div className="mt-6">
-          <p className="mb-2 text-xs font-bold text-muted-foreground">
-            ステップ1 · 並べ替えたら次へ。あとでバグを直して全部書きます
-          </p>
-          <OrderList
-            items={draft.items}
-            locked={locked}
-            phase={phase}
-            onReorder={(items) => onChange({ ...draft, items })}
-          />
-        </div>
-      );
-    }
-    return (
-      <div className="mt-6">
-        <label className="mb-2 block text-xs font-bold text-muted-foreground">
-          ステップ2 · バグを直して全部書く
-        </label>
-        <textarea
-          value={draft.value}
-          disabled={locked}
-          onChange={(event) =>
-            onChange({ ...draft, value: event.target.value })
-          }
-          spellCheck={false}
-          rows={Math.min(22, Math.max(12, draft.value.split("\n").length + 1))}
-          className={editorClass}
-        />
-      </div>
-    );
-  }
-
   if (
     (question.kind === "bugfix" || question.kind === "code") &&
     draft.kind === "text"
@@ -166,6 +131,9 @@ function arrayMove<T>(list: T[], from: number, to: number): T[] {
   return next;
 }
 
+const FLIP_MS = 240;
+const FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
 function OrderList({
   items,
   locked,
@@ -174,12 +142,15 @@ function OrderList({
 }: {
   items: string[];
   locked: boolean;
-  phase: "answering" | "correct" | "wrong";
+  phase: "answering" | "correct" | "wrong" | "standings";
   onReorder: (items: string[]) => void;
 }) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
   const dragIndexRef = useRef<number | null>(null);
+  const grabOffsetRef = useRef(0);
+  const pointerYRef = useRef(0);
+  const firstTopsRef = useRef<Map<string, number>>(new Map());
   const itemsRef = useRef(items);
   const onReorderRef = useRef(onReorder);
 
@@ -187,31 +158,95 @@ function OrderList({
   onReorderRef.current = onReorder;
   itemRefs.current.length = items.length;
 
+  function recordTops() {
+    const map = new Map<string, number>();
+    itemsRef.current.forEach((item, index) => {
+      const node = itemRefs.current[index];
+      if (node) map.set(item, node.getBoundingClientRect().top);
+    });
+    firstTopsRef.current = map;
+  }
+
+  function layoutTop(node: HTMLElement) {
+    const previous = node.style.transform;
+    node.style.transform = "none";
+    const top = node.getBoundingClientRect().top;
+    node.style.transform = previous;
+    return top;
+  }
+
+  function followPointer() {
+    const index = dragIndexRef.current;
+    if (index === null) return;
+    const node = itemRefs.current[index];
+    if (!node) return;
+    const desiredTop = pointerYRef.current - grabOffsetRef.current;
+    const dy = desiredTop - layoutTop(node);
+    node.style.transition = "none";
+    node.style.zIndex = "30";
+    node.style.transform = `translateY(${dy}px) scale(1.03)`;
+  }
+
+  useLayoutEffect(() => {
+    const prev = firstTopsRef.current;
+    items.forEach((item, index) => {
+      const node = itemRefs.current[index];
+      if (!node) return;
+      if (dragIndexRef.current === index) {
+        followPointer();
+        return;
+      }
+      const firstTop = prev.get(item);
+      if (firstTop == null) return;
+      const dy = firstTop - node.getBoundingClientRect().top;
+      if (Math.abs(dy) < 0.5) return;
+      node.style.transition = "none";
+      node.style.transform = `translateY(${dy}px)`;
+      node.getBoundingClientRect();
+      node.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE}`;
+      node.style.transform = "";
+    });
+  }, [items]);
+
   useEffect(() => {
     if (draggingIndex === null) return;
 
-    function hitIndex(clientY: number): number | null {
+    function hitIndex(clientY: number, from: number): number {
       const nodes = itemRefs.current;
       for (let i = 0; i < nodes.length; i++) {
+        if (i === from) continue;
         const node = nodes[i];
         if (!node) continue;
         const box = node.getBoundingClientRect();
-        if (clientY >= box.top && clientY <= box.bottom) return i;
+        const mid = (box.top + box.bottom) / 2;
+        if (i < from && clientY < mid) return i;
+        if (i > from && clientY > mid) return i;
       }
-      return null;
+      return from;
     }
 
     function onMove(event: PointerEvent) {
+      pointerYRef.current = event.clientY;
       const from = dragIndexRef.current;
       if (from === null) return;
-      const over = hitIndex(event.clientY);
-      if (over === null || over === from) return;
-      onReorderRef.current(arrayMove(itemsRef.current, from, over));
-      dragIndexRef.current = over;
-      setDraggingIndex(over);
+      const over = hitIndex(event.clientY, from);
+      if (over !== from) {
+        recordTops();
+        onReorderRef.current(arrayMove(itemsRef.current, from, over));
+        dragIndexRef.current = over;
+        setDraggingIndex(over);
+      }
+      followPointer();
     }
 
     function onUp() {
+      const index = dragIndexRef.current;
+      const node = index === null ? null : itemRefs.current[index];
+      if (node) {
+        node.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE}`;
+        node.style.transform = "";
+        node.style.zIndex = "";
+      }
       dragIndexRef.current = null;
       setDraggingIndex(null);
     }
@@ -229,6 +264,7 @@ function OrderList({
   function move(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= items.length) return;
+    recordTops();
     onReorder(arrayMove(items, index, target));
   }
 
@@ -236,8 +272,13 @@ function OrderList({
     if (locked) return;
     if ((event.target as HTMLElement).closest("button")) return;
     event.preventDefault();
+    const node = itemRefs.current[index];
+    const top = node?.getBoundingClientRect().top ?? event.clientY;
+    pointerYRef.current = event.clientY;
+    grabOffsetRef.current = event.clientY - top;
     dragIndexRef.current = index;
     setDraggingIndex(index);
+    followPointer();
   }
 
   return (
@@ -254,10 +295,10 @@ function OrderList({
             }}
             onPointerDown={(event) => startDrag(index, event)}
             className={cn(
-              "flex touch-none items-center gap-2 rounded-2xl border bg-surface-elevated px-3 py-2 select-none",
+              "flex touch-none items-center gap-2 rounded-2xl border bg-surface-elevated px-3 py-2 will-change-transform select-none",
               locked ? "cursor-default" : "cursor-grab",
               draggingIndex === index &&
-                "cursor-grabbing border-accent bg-accent-soft shadow-lg",
+                "cursor-grabbing border-accent bg-accent-soft shadow-xl",
               draggingIndex !== index &&
                 (phase === "correct"
                   ? "border-accent/40"

@@ -1,4 +1,5 @@
 import { DIFFICULTY_LABELS, normalizeTimeLimit, type Difficulty } from "@/lib/next-server-day";
+import { normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 
 export type LastResult = "correct" | "wrong" | null;
 
@@ -11,6 +12,7 @@ export type TeamMember = {
   xp: number;
   lastResult: LastResult;
   finished: boolean;
+  outfit: MascotOutfit | null;
   joinedAt: number;
   updatedAt: number;
 };
@@ -156,6 +158,7 @@ function emptyMember(id: string, name: string): TeamMember {
     xp: 0,
     lastResult: null,
     finished: false,
+    outfit: null,
     joinedAt: now,
     updatedAt: now,
   };
@@ -252,6 +255,10 @@ export function applyRoomUpdate(
     syncHostName(next, update.memberId, memberName);
   }
 
+  if (update.outfit) {
+    member.outfit = normalizeOutfit(update.outfit);
+  }
+
   if (update.difficulty) {
     if (!lockedDifficulty(next)) {
       if (next.host && next.host.memberId !== update.memberId) {
@@ -278,6 +285,7 @@ export type TeamStatusUpdate = {
   teamName: string;
   memberId: string;
   memberName?: string;
+  outfit?: MascotOutfit | null;
   difficulty?: Difficulty | null;
   current?: number;
   total?: number;
@@ -289,6 +297,48 @@ export type TeamStatusUpdate = {
 
 export function teamXp(team: TeamStatus): number {
   return team.members.reduce((sum, member) => sum + member.xp, 0);
+}
+
+export type RankedPlayer = {
+  id: string;
+  name: string;
+  teamName: string;
+  xp: number;
+  combo: number;
+  current: number;
+  total: number;
+  finished: boolean;
+  outfit: MascotOutfit | null;
+};
+
+/**
+ * Every player in the room, flattened out of their teams and sorted the way a
+ * Kahoot-style leaderboard is: most XP first, ties broken by who joined earlier
+ * so the order stays stable between reveals.
+ */
+export function roomRanking(room: Room): RankedPlayer[] {
+  return room.teams
+    .flatMap((team) =>
+      team.members.map((member) => ({
+        member,
+        teamName: team.name,
+      })),
+    )
+    .sort(
+      (a, b) =>
+        b.member.xp - a.member.xp || a.member.joinedAt - b.member.joinedAt,
+    )
+    .map(({ member, teamName }) => ({
+      id: member.id,
+      name: member.name,
+      teamName,
+      xp: member.xp,
+      combo: member.combo,
+      current: member.current,
+      total: member.total,
+      finished: member.finished,
+      outfit: member.outfit ?? null,
+    }));
 }
 
 export function teamFinished(team: TeamStatus): boolean {
