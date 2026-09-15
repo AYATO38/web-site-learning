@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -17,6 +17,9 @@ import type { RankedPlayer } from "@/lib/nsd-room";
 
 const STAGGER_MS = 80;
 const STAGGER_CAP = 12;
+const FLIP_MS = 700;
+const FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+const REORDER_DELAY_MS = 1100;
 
 export type StandingsRecap = {
   result: "correct" | "wrong";
@@ -25,14 +28,30 @@ export type StandingsRecap = {
   explanation: string;
 };
 
+/** Rows start lined up in last reveal's order, so the shuffle below is visible. */
+function orderByPreviousRank(
+  snapshot: RankedPlayer[],
+  previousRanks: Map<string, number> | null,
+): RankedPlayer[] {
+  if (!previousRanks) return snapshot;
+  return [...snapshot].sort((a, b) => {
+    const rankA = previousRanks.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+    const rankB = previousRanks.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+    return rankA - rankB;
+  });
+}
+
 /**
- * Kahoot-style standings shown between questions. The list is a frozen snapshot
- * so the reveal animation is not disturbed by live polling. Rows fly in from the
- * bottom rank up to first place, and each row carries how far the player moved
- * since the previous reveal. During the live synced round the room master
- * decides when everyone moves on — everyone else sees a passive "waiting for
- * the master" state instead of a button; a solo replay paces itself, so it
- * always gets the active button (`canAdvance`).
+ * Kahoot-style standings shown between questions. The snapshot is frozen so
+ * live polling can't disturb the reveal. The first-ever reveal counts up from
+ * the bottom rank to first place; every reveal after that lines rows up in
+ * last round's order first, then physically slides them into their new
+ * positions (a FLIP animation, same technique as the drag-reorder question
+ * type), so a rank change is something you watch happen, not just a number.
+ * During the live synced round the room master decides when everyone moves
+ * on — everyone else sees a passive "waiting for the master" state instead of
+ * a button; a solo replay paces itself, so it always gets the active button
+ * (`canAdvance`).
  */
 export function StandingsReveal({
   snapshot,
@@ -61,15 +80,58 @@ export function StandingsReveal({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [shown, setShown] = useState(reduceMotion);
+  const [order, setOrder] = useState(() =>
+    reduceMotion ? snapshot : orderByPreviousRank(snapshot, previousRanks),
+  );
+  const nodeRefs = useRef(new Map<string, HTMLLIElement>());
+  const flipFromRef = useRef<Map<string, number> | null>(null);
 
   useEffect(() => {
     void playResultSfx();
     if (reduceMotion) return;
-    const timer = window.setTimeout(() => setShown(true), 60);
-    return () => window.clearTimeout(timer);
+    const showTimer = window.setTimeout(() => setShown(true), 60);
+    let reorderTimer: number | undefined;
+    if (previousRanks) {
+      reorderTimer = window.setTimeout(() => {
+        const tops = new Map<string, number>();
+        nodeRefs.current.forEach((node, id) => {
+          tops.set(id, node.getBoundingClientRect().top);
+        });
+        flipFromRef.current = tops;
+        setOrder(snapshot);
+      }, REORDER_DELAY_MS);
+    }
+    return () => {
+      window.clearTimeout(showTimer);
+      if (reorderTimer !== undefined) window.clearTimeout(reorderTimer);
+    };
+    // Runs once on mount — snapshot/previousRanks are a frozen prop pair for
+    // this reveal's whole lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion]);
 
-  const lastIndex = snapshot.length - 1;
+  useLayoutEffect(() => {
+    const from = flipFromRef.current;
+    if (!from) return;
+    flipFromRef.current = null;
+    order.forEach((player) => {
+      const node = nodeRefs.current.get(player.id);
+      if (!node) return;
+      const prevTop = from.get(player.id);
+      if (prevTop == null) return;
+      const dy = prevTop - node.getBoundingClientRect().top;
+      if (Math.abs(dy) < 0.5) return;
+      node.style.transition = "none";
+      node.style.transform = `translateY(${dy}px)`;
+      node.getBoundingClientRect();
+      node.style.transition = `transform ${FLIP_MS}ms ${FLIP_EASE}`;
+      node.style.transform = "";
+    });
+  }, [order]);
+
+  const finalRank = new Map(snapshot.map((player, index) => [player.id, index]));
+  const lastIndex = order.length - 1;
+  const reordering = previousRanks != null;
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-5 py-10">
@@ -83,18 +145,25 @@ export function StandingsReveal({
       {recap ? <RecapCard recap={recap} /> : null}
 
       <ol className="mt-8 flex flex-col gap-2">
-        {snapshot.map((player, index) => {
+        {order.map((player, renderIndex) => {
+          const index = finalRank.get(player.id) ?? renderIndex;
           const previous = previousRanks?.get(player.id);
           const isNew = previousRanks != null && previous == null;
           const delta = previous == null ? null : previous - index;
           const isMine = player.id === myMemberId;
-          const revealOrder = Math.min(lastIndex - index, STAGGER_CAP);
+          const revealOrder = reordering
+            ? 0
+            : Math.min(lastIndex - renderIndex, STAGGER_CAP);
 
           return (
             <li
               key={player.id}
+              ref={(node) => {
+                if (node) nodeRefs.current.set(player.id, node);
+                else nodeRefs.current.delete(player.id);
+              }}
               className={cn(
-                "flex items-center gap-3 rounded-2xl px-3 py-2.5 ring-1 transition-all duration-500 ease-out",
+                "flex items-center gap-3 rounded-2xl px-3 py-2.5 ring-1 transition-[opacity,transform] duration-500 ease-out will-change-transform",
                 index === 0
                   ? "bg-gradient-to-r from-[#c9a39a]/25 to-transparent ring-[#c9a39a]/50"
                   : "bg-muted ring-transparent",

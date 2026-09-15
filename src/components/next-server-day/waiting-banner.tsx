@@ -11,16 +11,9 @@ const MAX_SHOWN = 8;
  * navigating to a separate screen — the player stays put, seeing their own
  * (now locked) answer, while this banner tracks who's still working on the
  * question. Once everyone's answered, the standings reveal takes over on its
- * own; leaving when that happens is otherwise out of the player's hands, so a
- * skip link stays available in case someone is stuck.
+ * own.
  */
-export function WaitingBanner({
-  pending,
-  onSkip,
-}: {
-  pending: PendingPlayer[];
-  onSkip: () => void;
-}) {
+export function WaitingBanner({ pending }: { pending: PendingPlayer[] }) {
   const shown = pending.slice(0, MAX_SHOWN);
   const extra = pending.length - shown.length;
 
@@ -61,13 +54,6 @@ export function WaitingBanner({
           </p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onSkip}
-        className="shrink-0 text-xs font-bold text-accent"
-      >
-        待たずに見る
-      </button>
     </div>
   );
 }

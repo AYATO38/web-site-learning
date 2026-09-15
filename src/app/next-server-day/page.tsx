@@ -465,10 +465,6 @@ export default function NextServerDayPage() {
     setPhase("standings");
   }
 
-  function handleSkipWaiting() {
-    if (room) revealStandings(room);
-  }
-
   function handleContinueFromStandings() {
     if (standingsSnapshot) {
       standingsPrevRanks.current = new Map(
@@ -1325,7 +1321,6 @@ export default function NextServerDayPage() {
                     )
                   : []
               }
-              onSkip={handleSkipWaiting}
             />
           )}
         </div>
