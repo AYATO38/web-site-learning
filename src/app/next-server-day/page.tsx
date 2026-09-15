@@ -5,7 +5,7 @@ import { Sparkles, Minus, Plus } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { StandingsReveal } from "@/components/next-server-day/standings-reveal";
-import { WaitingReveal } from "@/components/next-server-day/waiting-reveal";
+import { WaitingBanner } from "@/components/next-server-day/waiting-banner";
 import { InviteShare } from "@/components/next-server-day/invite-share";
 import { EventShell } from "@/components/next-server-day/event-shell";
 import { EventHero } from "@/components/next-server-day/event-hero";
@@ -1179,21 +1179,6 @@ export default function NextServerDayPage() {
     );
   }
 
-  if (phase === "waiting" && room && memberId) {
-    return (
-      <EventShell reserveNav={false}>
-        <WaitingReveal
-          pending={pendingPlayers(room, memberId, current).filter(
-            (player) => !player.away,
-          )}
-          questionNumber={current + 1}
-          total={total}
-          onSkip={handleSkipWaiting}
-        />
-      </EventShell>
-    );
-  }
-
   if (phase === "standings" && standingsSnapshot && room) {
     return (
       <EventShell reserveNav={false}>
@@ -1275,7 +1260,12 @@ export default function NextServerDayPage() {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-2 pb-40 sm:px-6">
+      <section
+        className={cn(
+          "mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-2 sm:px-6",
+          phase === "answering" ? "pb-40" : "pb-56",
+        )}
+      >
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-muted-foreground">
             {DIFFICULTY_LABELS[selectedDifficulty].label} ·{" "}
@@ -1288,9 +1278,11 @@ export default function NextServerDayPage() {
               </span>
             )}
             <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-semibold text-foreground">
-              {previewGain
+              {phase === "answering" && previewGain
                 ? `今 +${previewGain.xp} XP`
-                : `XP +${question.xp}〜${question.xp * 2}`}
+                : lastGain
+                  ? `+${lastGain.xp} XP`
+                  : `XP +${question.xp}〜${question.xp * 2}`}
             </span>
           </div>
         </div>
@@ -1310,19 +1302,32 @@ export default function NextServerDayPage() {
 
       <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl">
         <div className="mx-auto w-full max-w-2xl px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6">
-          <button
-            type="button"
-            onClick={handleCheck}
-            disabled={!readyToSubmit}
-            className={cn(
-              "w-full rounded-full py-4 text-lg font-bold",
-              readyToSubmit
-                ? "event-cta"
-                : "cursor-not-allowed bg-muted text-muted-foreground",
-            )}
-          >
-            これで答える！
-          </button>
+          {phase === "answering" ? (
+            <button
+              type="button"
+              onClick={handleCheck}
+              disabled={!readyToSubmit}
+              className={cn(
+                "w-full rounded-full py-4 text-lg font-bold",
+                readyToSubmit
+                  ? "event-cta"
+                  : "cursor-not-allowed bg-muted text-muted-foreground",
+              )}
+            >
+              これで答える！
+            </button>
+          ) : (
+            <WaitingBanner
+              pending={
+                memberId
+                  ? pendingPlayers(room, memberId, current).filter(
+                      (player) => !player.away,
+                    )
+                  : []
+              }
+              onSkip={handleSkipWaiting}
+            />
+          )}
         </div>
       </footer>
     </EventShell>
