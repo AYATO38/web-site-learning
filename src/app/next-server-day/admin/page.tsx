@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { EventShell } from "@/components/next-server-day/event-shell";
 import { EventHero } from "@/components/next-server-day/event-hero";
 import { QuestionBubble } from "@/components/question-bubble";
@@ -13,6 +21,7 @@ import {
   QUESTION_KIND_LABELS,
   type Difficulty,
   type NextServerDayQuestion,
+  type QuestionKind,
   type StoredQuestion,
 } from "@/lib/next-server-day";
 import {
@@ -21,11 +30,18 @@ import {
   initialDraft,
   type AnswerDraft,
 } from "@/lib/nsd-grade";
+import { QUESTION_KINDS, validateQuestionInput } from "@/lib/nsd-question-validate";
 import {
-  QUESTION_KINDS,
-  newQuestionTemplate,
-  validateQuestionInput,
-} from "@/lib/nsd-question-validate";
+  blankCountOf,
+  buildQuestion,
+  emptyForm,
+  formFromQuestion,
+  resizeBlankAccepted,
+  switchFormKind,
+  type ExpectedType,
+  type QuestionFormState,
+  type TestFormRow,
+} from "@/lib/nsd-question-form";
 import {
   createQuestion,
   deleteQuestionRequest,
@@ -36,14 +52,17 @@ import {
 import { fetchMe } from "@/lib/auth/client";
 
 const DIFFICULTIES: Difficulty[] = ["beginner", "intermediate", "advanced"];
+const CATEGORIES = ["HTML", "CSS", "JS", "React"] as const;
+const LANGUAGES = [
+  { id: "html", label: "HTML" },
+  { id: "css", label: "CSS" },
+  { id: "js", label: "JavaScript" },
+] as const;
 
-function tryParseJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}
+const fieldClass =
+  "w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm font-semibold text-foreground outline-none focus:border-accent";
+const codeFieldClass =
+  "w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 font-mono text-sm font-semibold text-foreground outline-none focus:border-accent";
 
 export default function NextServerDayAdminPage() {
   const [loading, setLoading] = useState(true);
@@ -51,7 +70,7 @@ export default function NextServerDayAdminPage() {
   const [questions, setQuestions] = useState<StoredQuestion[]>([]);
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draftText, setDraftText] = useState("");
+  const [form, setForm] = useState<QuestionFormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,33 +87,27 @@ export default function NextServerDayAdminPage() {
   }, []);
 
   const validation = useMemo(() => {
-    const parsed = tryParseJson(draftText);
-    if (parsed === undefined) {
-      return { ok: false as const, error: "JSONとして読み取れません（文法エラー）" };
-    }
-    return validateQuestionInput(parsed);
-  }, [draftText]);
+    if (!form) return { ok: false as const, error: "" };
+    return validateQuestionInput(buildQuestion(form));
+  }, [form]);
 
-  function startNew(kind: (typeof QUESTION_KINDS)[number], difficulty: Difficulty) {
+  function startNew(kind: QuestionKind, difficulty: Difficulty) {
     setEditingId(null);
-    setDraftText(newQuestionTemplate(kind, difficulty));
+    setForm(emptyForm(kind, difficulty));
     setError(null);
     setMode("edit");
   }
 
   function startEdit(question: StoredQuestion) {
-    const content: Record<string, unknown> = { ...question };
-    delete content.sortOrder;
-    delete content.updatedAt;
     setEditingId(question.id);
-    setDraftText(JSON.stringify(content, null, 2));
+    setForm(formFromQuestion(question));
     setError(null);
     setMode("edit");
   }
 
   async function handleSave() {
-    if (!validation.ok) {
-      setError(validation.error);
+    if (!form || !validation.ok) {
+      setError(validation.ok ? null : validation.error);
       return;
     }
     setSaving(true);
@@ -191,7 +204,7 @@ export default function NextServerDayAdminPage() {
           subtitle="次サバDAYの問題と解説を追加・編集できます。保存すると次の対戦からすぐ反映されます。"
         />
 
-        {mode === "list" ? (
+        {mode === "list" || !form ? (
           <QuestionList
             questions={questions}
             error={error}
@@ -202,8 +215,8 @@ export default function NextServerDayAdminPage() {
           />
         ) : (
           <QuestionEditor
-            draftText={draftText}
-            onChangeText={setDraftText}
+            form={form}
+            onChange={setForm}
             validation={validation}
             saving={saving}
             error={error}
@@ -231,7 +244,7 @@ function QuestionList({
 }: {
   questions: StoredQuestion[];
   error: string | null;
-  onNew: (kind: (typeof QUESTION_KINDS)[number], difficulty: Difficulty) => void;
+  onNew: (kind: QuestionKind, difficulty: Difficulty) => void;
   onEdit: (question: StoredQuestion) => void;
   onDelete: (id: string) => void;
   onMove: (question: StoredQuestion, direction: -1 | 1) => void;
@@ -341,9 +354,109 @@ function QuestionList({
   );
 }
 
+/** A labeled, reorderable list of plain-text rows — no brackets or commas. */
+function StringListField({
+  label,
+  hint,
+  items,
+  onChange,
+  placeholder,
+  reorderable,
+}: {
+  label: string;
+  hint?: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder?: string;
+  reorderable?: boolean;
+}) {
+  function update(index: number, value: string) {
+    const next = [...items];
+    next[index] = value;
+    onChange(next);
+  }
+  function remove(index: number) {
+    onChange(items.filter((_, i) => i !== index));
+  }
+  function move(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= items.length) return;
+    const next = [...items];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    onChange(next);
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-bold text-foreground">{label}</p>
+      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+      <div className="mt-2 flex flex-col gap-2">
+        {items.map((item, index) => (
+          <div key={index} className="flex items-center gap-1.5">
+            {reorderable ? (
+              <span className="flex shrink-0 flex-col">
+                <button
+                  type="button"
+                  onClick={() => move(index, -1)}
+                  disabled={index === 0}
+                  aria-label="上へ"
+                  className="text-muted-foreground disabled:opacity-25"
+                >
+                  <ChevronUp className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(index, 1)}
+                  disabled={index === items.length - 1}
+                  aria-label="下へ"
+                  className="text-muted-foreground disabled:opacity-25"
+                >
+                  <ChevronDown className="size-3.5" />
+                </button>
+              </span>
+            ) : null}
+            <input
+              type="text"
+              value={item}
+              onChange={(event) => update(index, event.target.value)}
+              placeholder={placeholder}
+              className={cn(fieldClass, "flex-1")}
+            />
+            <button
+              type="button"
+              onClick={() => remove(index)}
+              aria-label="この行を削除"
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-wrong"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange([...items, ""])}
+        className="mt-2 inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-bold text-foreground"
+      >
+        <Plus className="size-3.5" />
+        追加
+      </button>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-sm font-bold text-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 function QuestionEditor({
-  draftText,
-  onChangeText,
+  form,
+  onChange,
   validation,
   saving,
   error,
@@ -352,8 +465,8 @@ function QuestionEditor({
   onCancel,
   onDelete,
 }: {
-  draftText: string;
-  onChangeText: (value: string) => void;
+  form: QuestionFormState;
+  onChange: (form: QuestionFormState) => void;
   validation: ReturnType<typeof validateQuestionInput>;
   saving: boolean;
   error: string | null;
@@ -362,43 +475,144 @@ function QuestionEditor({
   onCancel: () => void;
   onDelete?: () => void;
 }) {
+  function patch(fields: Partial<QuestionFormState>) {
+    onChange({ ...form, ...fields });
+  }
+
+  const previewQuestion = validation.ok ? validation.question : null;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="event-card rounded-2xl p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold">
-            {isNew ? "新しい問題を追加" : "問題を編集"}
-          </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-sm font-semibold text-muted-foreground"
-          >
-            一覧に戻る
-          </button>
-        </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          JSONとして編集してください。id は保存後は変更できません。下のプレビューで実際に答えて採点を試せます。
-        </p>
-        <textarea
-          value={draftText}
-          onChange={(event) => onChangeText(event.target.value)}
-          spellCheck={false}
-          rows={Math.min(28, Math.max(14, draftText.split("\n").length + 1))}
-          className="mt-3 w-full rounded-xl border border-border bg-muted px-4 py-3 font-mono text-xs font-semibold leading-relaxed text-foreground outline-none focus:border-accent"
-        />
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold">{isNew ? "新しい問題を追加" : "問題を編集"}</h2>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-sm font-semibold text-muted-foreground"
+        >
+          一覧に戻る
+        </button>
+      </div>
 
+      <section className="event-card flex flex-col gap-4 rounded-2xl p-4">
+        <p className="section-en">Basics</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="難易度">
+            <select
+              value={form.difficulty}
+              onChange={(event) =>
+                patch({ difficulty: event.target.value as Difficulty })
+              }
+              className={fieldClass}
+            >
+              {DIFFICULTIES.map((difficulty) => (
+                <option key={difficulty} value={difficulty}>
+                  {DIFFICULTY_LABELS[difficulty].label}（{DIFFICULTY_LABELS[difficulty].desc}）
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="カテゴリ">
+            <select
+              value={form.category}
+              onChange={(event) =>
+                patch({ category: event.target.value as QuestionFormState["category"] })
+              }
+              className={fieldClass}
+            >
+              {CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="種類">
+            <select
+              value={form.kind}
+              onChange={(event) =>
+                onChange(switchFormKind(form, event.target.value as QuestionKind))
+              }
+              className={fieldClass}
+            >
+              {QUESTION_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {QUESTION_KIND_LABELS[kind]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="XP（正解時の獲得ポイント）">
+            <input
+              type="number"
+              min={1}
+              value={form.xp}
+              onChange={(event) => patch({ xp: event.target.value })}
+              className={fieldClass}
+            />
+          </Field>
+        </div>
+        <Field label="id（保存後は変更できません）">
+          <input
+            type="text"
+            value={form.id}
+            disabled={!isNew}
+            onChange={(event) => patch({ id: event.target.value })}
+            placeholder="半角小文字・数字・ハイフン"
+            className={cn(fieldClass, !isNew && "opacity-60")}
+          />
+        </Field>
+      </section>
+
+      <section className="event-card flex flex-col gap-4 rounded-2xl p-4">
+        <p className="section-en">Question</p>
+        <Field label="問題文">
+          <textarea
+            value={form.prompt}
+            onChange={(event) => patch({ prompt: event.target.value })}
+            rows={3}
+            className={fieldClass}
+          />
+        </Field>
+        <Field label="問題に添えるコード（任意）">
+          <textarea
+            value={form.code}
+            onChange={(event) => patch({ code: event.target.value })}
+            rows={3}
+            spellCheck={false}
+            className={codeFieldClass}
+          />
+        </Field>
+      </section>
+
+      <section className="event-card flex flex-col gap-4 rounded-2xl p-4">
+        <p className="section-en">{QUESTION_KIND_LABELS[form.kind]}</p>
+        <KindFields form={form} onChange={onChange} />
+      </section>
+
+      <section className="event-card flex flex-col gap-4 rounded-2xl p-4">
+        <p className="section-en">Explanation</p>
+        <Field label="解説">
+          <textarea
+            value={form.explanation}
+            onChange={(event) => patch({ explanation: event.target.value })}
+            rows={3}
+            className={fieldClass}
+          />
+        </Field>
+      </section>
+
+      <section className="event-card rounded-2xl p-4">
         <p
           className={cn(
-            "mt-2 text-sm font-bold",
+            "text-sm font-bold",
             validation.ok ? "text-accent" : "text-wrong",
           )}
         >
           {validation.ok ? "✓ 保存できます" : validation.error}
         </p>
         {error ? <p className="mt-1 text-sm font-semibold text-wrong">{error}</p> : null}
-
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={onSave}
@@ -422,18 +636,281 @@ function QuestionEditor({
             </button>
           ) : null}
         </div>
-      </div>
+      </section>
 
-      {validation.ok ? (
+      {previewQuestion ? (
         <section className="event-card rounded-2xl p-4">
           <p className="section-en">Preview</p>
           <h3 className="text-base font-bold">プレビュー</h3>
           <QuestionPreview
-            key={`${validation.question.kind}:${validation.question.id}`}
-            question={validation.question}
+            key={`${previewQuestion.kind}:${previewQuestion.id}`}
+            question={previewQuestion}
           />
         </section>
       ) : null}
+    </div>
+  );
+}
+
+function KindFields({
+  form,
+  onChange,
+}: {
+  form: QuestionFormState;
+  onChange: (form: QuestionFormState) => void;
+}) {
+  function patch(fields: Partial<QuestionFormState>) {
+    onChange({ ...form, ...fields });
+  }
+
+  if (form.kind === "choice") {
+    return (
+      <div>
+        <p className="text-sm font-bold text-foreground">
+          選択肢（○を正解につけてください）
+        </p>
+        <div className="mt-2 flex flex-col gap-2">
+          {form.choices.map((choice, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="answerIndex"
+                checked={form.answerIndex === index}
+                onChange={() => patch({ answerIndex: index })}
+                aria-label={`選択肢${index + 1}を正解にする`}
+                className="size-5 shrink-0 accent-accent"
+              />
+              <input
+                type="text"
+                value={choice}
+                onChange={(event) => {
+                  const next = [...form.choices];
+                  next[index] = event.target.value;
+                  patch({ choices: next });
+                }}
+                placeholder={`選択肢${index + 1}`}
+                className={cn(fieldClass, "flex-1")}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (form.kind === "blank") {
+    const blankCount = blankCountOf(form.template);
+    return (
+      <div className="flex flex-col gap-4">
+        <Field label="テンプレート">
+          <>
+            <p className="text-xs text-muted-foreground">
+              空欄にしたい部分に ___（アンダースコア3つ）を入れてください
+            </p>
+            <textarea
+              value={form.template}
+              onChange={(event) => {
+                const template = event.target.value;
+                patch({
+                  template,
+                  blankAccepted: resizeBlankAccepted(
+                    form.blankAccepted,
+                    blankCountOf(template),
+                  ),
+                });
+              }}
+              rows={3}
+              className={fieldClass}
+            />
+          </>
+        </Field>
+        {blankCount === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            テンプレートに ___ を入れると、空欄ごとの正解入力欄が出てきます
+          </p>
+        ) : (
+          Array.from({ length: blankCount }, (_, index) => (
+            <StringListField
+              key={index}
+              label={`空欄${index + 1}の正解候補`}
+              hint="どれか1つに一致すれば正解になります"
+              items={form.blankAccepted[index] ?? []}
+              placeholder="正解の文字列"
+              onChange={(items) => {
+                const next = resizeBlankAccepted(form.blankAccepted, blankCount);
+                next[index] = items;
+                patch({ blankAccepted: next });
+              }}
+            />
+          ))
+        )}
+      </div>
+    );
+  }
+
+  if (form.kind === "order") {
+    return (
+      <StringListField
+        label="正しい順に並べた項目"
+        hint="上から順が正解の並びです。矢印で並び替えられます"
+        items={form.items}
+        placeholder="項目"
+        reorderable
+        onChange={(items) => patch({ items })}
+      />
+    );
+  }
+
+  // bugfix / code
+  return (
+    <div className="flex flex-col gap-4">
+      <Field label={form.kind === "bugfix" ? "直す前のコード" : "書き始めのコード（空でもOK）"}>
+        <textarea
+          value={form.starter}
+          onChange={(event) => patch({ starter: event.target.value })}
+          rows={6}
+          spellCheck={false}
+          className={codeFieldClass}
+        />
+      </Field>
+      <Field label="言語">
+        <select
+          value={form.language}
+          onChange={(event) =>
+            patch({ language: event.target.value as QuestionFormState["language"] })
+          }
+          className={fieldClass}
+        >
+          {LANGUAGES.map((lang) => (
+            <option key={lang.id} value={lang.id}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <StringListField
+        label="これと完全に一致すれば正解（任意）"
+        hint="書き方のゆれを無視した完全一致チェックです"
+        items={form.accepted}
+        placeholder="完全一致する正解"
+        onChange={(items) => patch({ accepted: items })}
+      />
+      <StringListField
+        label="含んでいれば正解の条件（任意）"
+        items={form.mustInclude}
+        placeholder="含むべき文字列"
+        onChange={(items) => patch({ mustInclude: items })}
+      />
+      <StringListField
+        label="含むべき Tailwind クラス（任意）"
+        hint="クラス名として独立しているかまで見て判定します"
+        items={form.mustIncludeClasses}
+        placeholder="例: bg-blue-500"
+        onChange={(items) => patch({ mustIncludeClasses: items })}
+      />
+      <StringListField
+        label="この順番で含むべき文字列（任意）"
+        items={form.mustIncludeOrdered}
+        placeholder="例: <h1>"
+        onChange={(items) => patch({ mustIncludeOrdered: items })}
+      />
+      <StringListField
+        label="含んではいけない文字列（任意）"
+        items={form.mustNotInclude}
+        placeholder="含んではいけない文字列"
+        onChange={(items) => patch({ mustNotInclude: items })}
+      />
+      {form.kind === "code" ? (
+        <TestsField tests={form.tests} onChange={(tests) => patch({ tests })} />
+      ) : null}
+    </div>
+  );
+}
+
+function TestsField({
+  tests,
+  onChange,
+}: {
+  tests: TestFormRow[];
+  onChange: (tests: TestFormRow[]) => void;
+}) {
+  function update(index: number, patch: Partial<TestFormRow>) {
+    const next = [...tests];
+    next[index] = { ...next[index]!, ...patch };
+    onChange(next);
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-bold text-foreground">自動採点テスト（任意）</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        書いたコードを実際に動かして、呼び出し結果が期待する値と一致するか確認します
+      </p>
+      <div className="mt-2 flex flex-col gap-3">
+        {tests.map((test, index) => (
+          <div key={index} className="rounded-xl border border-border bg-surface-elevated p-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={test.call}
+                onChange={(event) => update(index, { call: event.target.value })}
+                placeholder="呼び出し 例: double(2)"
+                className={cn(codeFieldClass, "flex-1")}
+              />
+              <button
+                type="button"
+                onClick={() => onChange(tests.filter((_, i) => i !== index))}
+                aria-label="このテストを削除"
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-wrong"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-muted-foreground">期待する値:</span>
+              <select
+                value={test.expectedType}
+                onChange={(event) =>
+                  update(index, { expectedType: event.target.value as ExpectedType })
+                }
+                className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-semibold"
+              >
+                <option value="number">数値</option>
+                <option value="string">文字列</option>
+                <option value="boolean">真偽値</option>
+                <option value="null">null</option>
+              </select>
+              {test.expectedType === "boolean" ? (
+                <select
+                  value={test.expectedValue}
+                  onChange={(event) => update(index, { expectedValue: event.target.value })}
+                  className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-semibold"
+                >
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+              ) : test.expectedType === "null" ? null : (
+                <input
+                  type="text"
+                  value={test.expectedValue}
+                  onChange={(event) => update(index, { expectedValue: event.target.value })}
+                  className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-semibold"
+                />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() =>
+          onChange([...tests, { call: "", expectedType: "number", expectedValue: "" }])
+        }
+        className="mt-2 inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-bold text-foreground"
+      >
+        <Plus className="size-3.5" />
+        テストを追加
+      </button>
     </div>
   );
 }
@@ -478,7 +955,9 @@ function QuestionPreview({ question }: { question: NextServerDayQuestion }) {
               : "border-wrong/30 bg-wrong-surface text-wrong",
           )}
         >
-          <p className="font-extrabold">{graded ? "正解と判定されました" : "不正解と判定されました"}</p>
+          <p className="font-extrabold">
+            {graded ? "正解と判定されました" : "不正解と判定されました"}
+          </p>
           <p className="mt-1 text-foreground">
             <span className="font-extrabold">解説: </span>
             {question.explanation}
