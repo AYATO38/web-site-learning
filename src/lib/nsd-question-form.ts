@@ -45,6 +45,8 @@ export type QuestionFormState = {
 
   // bugfix / code
   starter: string;
+  /** bugfix only — the full corrected code, required. */
+  solution: string;
   language: "html" | "css" | "js";
   accepted: string[];
   mustInclude: string[];
@@ -89,6 +91,7 @@ export function emptyForm(kind: QuestionKind, difficulty: Difficulty): QuestionF
     items: ["", ""],
     acceptedOrders: undefined,
     starter: "",
+    solution: "",
     language: "html",
     accepted: [],
     mustInclude: [],
@@ -128,6 +131,7 @@ export function formFromQuestion(question: StoredQuestion): QuestionFormState {
     form.acceptedOrders = question.acceptedOrders;
   } else {
     form.starter = question.starter ?? "";
+    if (question.kind === "bugfix") form.solution = question.solution;
     form.language = question.language;
     form.accepted = question.accepted ? [...question.accepted] : [];
     form.mustInclude = question.mustInclude ? [...question.mustInclude] : [];
@@ -247,7 +251,12 @@ export function buildQuestion(form: QuestionFormState): NextServerDayQuestion {
   });
 
   if (form.kind === "bugfix") {
-    return { ...common, kind: "bugfix", starter: common.starter ?? "" };
+    return {
+      ...common,
+      kind: "bugfix",
+      starter: common.starter ?? "",
+      solution: form.solution.trim(),
+    };
   }
 
   const tests = form.tests

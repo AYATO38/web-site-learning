@@ -34,6 +34,8 @@ export type OrderQuestion = QuestionBase & {
 export type BugfixQuestion = QuestionBase & {
   kind: "bugfix";
   starter: string;
+  /** The full corrected code — grades an exact match, and is what the answer gets diffed against. */
+  solution: string;
   language: "html" | "css" | "js";
   accepted?: string[];
   mustInclude?: string[];

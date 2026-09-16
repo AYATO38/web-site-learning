@@ -18,6 +18,7 @@ import { RoomSettingsPanel } from "@/components/next-server-day/room-settings";
 import { useLockQuizLeave, useRequestLeave } from "@/components/leave-guard";
 import { useQuestionTimer } from "@/components/next-server-day/use-question-timer";
 import { cn } from "@/lib/utils";
+import { diffBugfixAnswer } from "@/lib/nsd-code-diff";
 import {
   DIFFICULTY_LABELS,
   QUESTION_KIND_LABELS,
@@ -1233,6 +1234,12 @@ export default function NextServerDayPage() {
                   title: feedbackTitle(),
                   gain: roundResult === "correct" ? lastGain : null,
                   explanation: question.explanation,
+                  codeDiff:
+                    roundResult === "wrong" &&
+                    question.kind === "bugfix" &&
+                    draft.kind === "text"
+                      ? diffBugfixAnswer(question.starter, question.solution, draft.value)
+                      : null,
                 }
               : null
           }

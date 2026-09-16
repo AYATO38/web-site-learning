@@ -24,6 +24,7 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     kind: "bugfix",
     prompt: "リンクが開きません。バグを直してください。",
     starter: `<a src="https://posse.jp">POSSE</a>`,
+    solution: `<a href="https://posse.jp">POSSE</a>`,
     language: "html",
     accepted: [`<a href="https://posse.jp">POSSE</a>`],
     mustInclude: ["<a", "href=", "posse.jp", "</a>"],
@@ -147,6 +148,7 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     kind: "bugfix",
     prompt: "文字が青く太くならず、中央にもなりません。class を直してください。",
     starter: `<h1 class="text-centre font-blod text-bleu-500">POSSE</h1>`,
+    solution: `<h1 class="text-center font-bold text-blue-500">POSSE</h1>`,
     language: "html",
     mustInclude: ["text-center", "font-bold", "text-blue-500"],
     mustNotInclude: ["text-centre", "font-blod", "text-bleu"],
@@ -176,6 +178,29 @@ export const nsdQuestions: NextServerDayQuestion[] = [
   </nav>
 
   <div class="grid md: grid-cols-3 gap-4 mt-6">
+    <div class="bg-white p-4 rounded shadow">カード1</div>
+    <div class="bg-white p-4 rounded shadow">カード2</div>
+    <div class="bg-white p-4 rounded shadow">カード3</div>
+  </div>
+
+</body>
+</html>`,
+    solution: `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>イベント告知</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+
+  <nav class="flex flex-col md:flex-row">
+    <a href="#" class="p-2">ホーム</a>
+    <a href="#" class="p-2">詳細</a>
+  </nav>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
     <div class="bg-white p-4 rounded shadow">カード1</div>
     <div class="bg-white p-4 rounded shadow">カード2</div>
     <div class="bg-white p-4 rounded shadow">カード3</div>
@@ -282,6 +307,7 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     kind: "bugfix",
     prompt: "カウントの状態が動きません。バグを直してください。",
     starter: `const [count, setCount] = useState;`,
+    solution: `const [count, setCount] = useState(0);`,
     language: "js",
     accepted: [
       "const [count, setCount] = useState(0);",
@@ -364,6 +390,18 @@ members.forEach((member) => {
   const card = document.createElement("div");
   card.innerHTML = \`<h3>member.name</h3><p>{member.role}</p>\`;
   member.appendChild(card);
+});`,
+    solution: `const members = [
+  { name: "田中", role: "デザイナー" },
+  { name: "鈴木", role: "エンジニア" }
+];
+
+const list = document.getElementById("memberList");
+
+members.forEach((member) => {
+  const card = document.createElement("div");
+  card.innerHTML = \`<h3>member.name</h3><p>{member.role}</p>\`;
+  list.appendChild(card);
 });`,
     language: "js",
     mustInclude: [

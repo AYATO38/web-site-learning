@@ -15,7 +15,9 @@ import { EventShell } from "@/components/next-server-day/event-shell";
 import { EventHero } from "@/components/next-server-day/event-hero";
 import { QuestionBubble } from "@/components/question-bubble";
 import { AnswerPanel } from "@/components/next-server-day/answer-panel";
+import { CodeDiffView } from "@/components/next-server-day/code-diff-view";
 import { cn } from "@/lib/utils";
+import { diffBugfixAnswer } from "@/lib/nsd-code-diff";
 import {
   DIFFICULTY_LABELS,
   QUESTION_KIND_LABELS,
@@ -773,6 +775,22 @@ function KindFields({
           className={codeFieldClass}
         />
       </Field>
+      {form.kind === "bugfix" ? (
+        <Field label="正解のコード全体">
+          <>
+            <p className="text-xs text-muted-foreground">
+              これと一致すれば自動で正解になります。回答が間違っていたとき、この内容と見比べて赤字・緑字で違いを表示します
+            </p>
+            <textarea
+              value={form.solution}
+              onChange={(event) => patch({ solution: event.target.value })}
+              rows={6}
+              spellCheck={false}
+              className={codeFieldClass}
+            />
+          </>
+        </Field>
+      ) : null}
       <Field label="言語">
         <select
           value={form.language}
@@ -922,6 +940,10 @@ function QuestionPreview({ question }: { question: NextServerDayQuestion }) {
   // test answer.
   const [draft, setDraft] = useState<AnswerDraft>(() => initialDraft(question));
   const [graded, setGraded] = useState<boolean | null>(null);
+  const diff =
+    graded === false && question.kind === "bugfix" && draft.kind === "text"
+      ? diffBugfixAnswer(question.starter, question.solution, draft.value)
+      : null;
 
   return (
     <div className="mt-3">
@@ -962,6 +984,7 @@ function QuestionPreview({ question }: { question: NextServerDayQuestion }) {
             <span className="font-extrabold">解説: </span>
             {question.explanation}
           </p>
+          {diff ? <CodeDiffView diff={diff} /> : null}
           <button
             type="button"
             onClick={() => {

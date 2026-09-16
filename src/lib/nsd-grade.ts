@@ -241,6 +241,15 @@ export function gradeAnswer(
     });
   }
   if (draft.kind !== "text") return false;
+  if (question.kind === "bugfix") {
+    // The canonical solution always counts as an accepted answer, even if
+    // the author didn't also list it under `accepted` — it's the same
+    // reference the answer gets diffed against on a wrong attempt.
+    return gradeWritten(draft.value, {
+      ...question,
+      accepted: [...(question.accepted ?? []), question.solution],
+    });
+  }
   return gradeWritten(draft.value, question);
 }
 

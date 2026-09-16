@@ -12,7 +12,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
+import { CodeDiffView } from "@/components/next-server-day/code-diff-view";
 import { playResultSfx } from "@/lib/sfx";
+import type { DiffLine } from "@/lib/nsd-code-diff";
 import type { RankedPlayer } from "@/lib/nsd-room";
 
 const STAGGER_MS = 80;
@@ -26,6 +28,8 @@ export type StandingsRecap = {
   title: string;
   gain: { xp: number; bonus: number } | null;
   explanation: string;
+  /** Bugfix questions answered wrong: the student's code diffed against the model solution. */
+  codeDiff?: DiffLine[] | null;
 };
 
 /** Rows start lined up in last reveal's order, so the shuffle below is visible. */
@@ -255,6 +259,18 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
           <span className="font-extrabold">解説: </span>
           {recap.explanation}
         </p>
+        {recap.codeDiff ? (
+          <>
+            <p className="mt-2 text-xs font-extrabold">
+              あなたのコード（
+              <span className="text-wrong">赤=直っていない</span>
+              ・
+              <span className="text-accent">緑=正しく直せた</span>
+              ）
+            </p>
+            <CodeDiffView diff={recap.codeDiff} />
+          </>
+        ) : null}
       </div>
     </div>
   );

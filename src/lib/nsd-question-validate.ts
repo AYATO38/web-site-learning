@@ -206,10 +206,14 @@ export function validateQuestionInput(raw: unknown): ValidationResult {
     });
 
     if (data.kind === "bugfix") {
+      if (!isNonEmptyString(data.solution)) {
+        return { ok: false, error: "solution（正解のコード全体）を入力してください" };
+      }
       const question: BugfixQuestion = {
         ...common,
         kind: "bugfix",
         starter: common.starter as string,
+        solution: data.solution,
       };
       return { ok: true, question };
     }
