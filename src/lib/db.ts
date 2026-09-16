@@ -93,6 +93,19 @@ export async function ensureDb(): Promise<Sql> {
       await sql.query(`
         ALTER TABLE rooms ADD COLUMN IF NOT EXISTS released_question INTEGER
       `);
+      await sql.query(`
+        CREATE TABLE IF NOT EXISTS nsd_questions (
+          id TEXT PRIMARY KEY,
+          difficulty TEXT NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          data JSONB NOT NULL,
+          updated_at BIGINT NOT NULL
+        )
+      `);
+      await sql.query(`
+        CREATE INDEX IF NOT EXISTS nsd_questions_difficulty_idx
+          ON nsd_questions (difficulty, sort_order)
+      `);
     })();
   }
   await schemaReady;

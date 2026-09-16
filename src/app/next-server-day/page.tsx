@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Minus, Plus } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
@@ -22,7 +23,9 @@ import {
   QUESTION_KIND_LABELS,
   QUESTION_TIME_LIMIT_LABEL,
   type Difficulty,
+  type NextServerDayQuestion,
 } from "@/lib/next-server-day";
+import { fetchQuestionsList } from "@/lib/nsd-questions-client";
 import {
   canSubmitDraft,
   earnedXp,
@@ -57,8 +60,6 @@ import { loadOutfit, normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 import { playCorrectSfx, playWrongSfx } from "@/lib/sfx";
 import { nsdQuestions } from "@/data/next-server-day";
 
-const questions = nsdQuestions;
-
 type Phase = "answering" | "waiting" | "standings";
 type EntryMode = "create" | "join";
 
@@ -73,10 +74,12 @@ function DifficultyStartGrid({
   host,
   disabled,
   onPick,
+  questions,
 }: {
   host: boolean;
   disabled?: boolean;
   onPick: (key: Difficulty) => void;
+  questions: NextServerDayQuestion[];
 }) {
   return (
     <>
@@ -88,7 +91,11 @@ function DifficultyStartGrid({
       <div className="grid gap-4 sm:grid-cols-3">
         {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((key) => {
           const d = DIFFICULTY_LABELS[key];
-          const count = questions.filter((q) => q.difficulty === key).length;
+          const inDifficulty = questions.filter((q) => q.difficulty === key);
+          const count = inDifficulty.length;
+          const kinds = [...new Set(inDifficulty.map((q) => q.kind))]
+            .map((kind) => QUESTION_KIND_LABELS[kind])
+            .join("・");
           const locked = disabled || !host || count === 0;
           return (
             <button
@@ -103,9 +110,11 @@ function DifficultyStartGrid({
               </span>
               <div>
                 <div className="text-lg font-extrabold">{d.label}</div>
-                <div className="mt-1 text-sm text-muted-foreground">{d.desc}</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {d.desc} · {count}問
+                </div>
                 <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  {d.kinds}
+                  {kinds}
                 </div>
               </div>
             </button>
@@ -117,6 +126,10 @@ function DifficultyStartGrid({
 }
 
 export default function NextServerDayPage() {
+  // Seeded with the bundled defaults so the app works instantly even before
+  // the DB-backed list arrives (or if that fetch ever fails).
+  const [questions, setQuestions] = useState<NextServerDayQuestion[]>(nsdQuestions);
+  const [canEditQuestions, setCanEditQuestions] = useState(false);
   const [entryMode, setEntryMode] = useState<EntryMode>("create");
   const [teams, setTeams] = useState<string[] | null>(null);
   const [myTeam, setMyTeam] = useState<string | null>(null);
@@ -173,7 +186,7 @@ export default function NextServerDayPage() {
       selectedDifficulty
         ? questions.filter((q) => q.difficulty === selectedDifficulty)
         : [],
-    [selectedDifficulty],
+    [selectedDifficulty, questions],
   );
 
   const total = activeQuestions.length;
@@ -227,6 +240,15 @@ export default function NextServerDayPage() {
       setJoinCode(code);
       void enterRoomByCode(code);
     }
+
+    void fetchQuestionsList()
+      .then(({ questions: fetched, canEdit }) => {
+        if (fetched.length > 0) setQuestions(fetched);
+        setCanEditQuestions(canEdit);
+      })
+      .catch(() => {
+        /* keep the bundled defaults this page already started with */
+      });
   }, []);
 
   function handleDisplayNameChange(value: string) {
@@ -299,7 +321,7 @@ export default function NextServerDayPage() {
       lastResult: null,
       finished: false,
     });
-  }, [room, myTeam, memberId, selectedDifficulty]);
+  }, [room, myTeam, memberId, selectedDifficulty, questions]);
 
   useEffect(() => {
     if (!room || !memberId || skipAutoSeat || myTeam || inGallery) return;
@@ -767,6 +789,15 @@ export default function NextServerDayPage() {
             subtitle="招待リンクを送れば、別のネットの端末からも参加できます"
           />
 
+          {canEditQuestions ? (
+            <Link
+              href="/next-server-day/admin"
+              className="mb-5 -mt-3 block text-center text-xs font-semibold text-muted-foreground underline-offset-2 hover:underline"
+            >
+              問題を編集
+            </Link>
+          ) : null}
+
           <div className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 ring-1 ring-border">
             <button
               type="button"
@@ -1108,6 +1139,7 @@ export default function NextServerDayPage() {
                   host
                   disabled={busy}
                   onPick={(key) => void startAllWithDifficulty(key)}
+                  questions={questions}
                 />
               </div>
             ) : null}
@@ -1158,6 +1190,7 @@ export default function NextServerDayPage() {
             host={isHost(room, memberId)}
             disabled={busy}
             onPick={(key) => void startAllWithDifficulty(key)}
+            questions={questions}
           />
         </div>
       </EventShell>

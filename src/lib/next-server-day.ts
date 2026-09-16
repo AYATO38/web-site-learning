@@ -61,6 +61,12 @@ export type NextServerDayQuestion =
   | BugfixQuestion
   | CodeQuestion;
 
+/** A question as the store returns it: editable content plus its place in line. */
+export type StoredQuestion = NextServerDayQuestion & {
+  sortOrder: number;
+  updatedAt: number;
+};
+
 export const QUESTION_KIND_LABELS: Record<QuestionKind, string> = {
   choice: "選択",
   blank: "穴埋め",
@@ -69,25 +75,15 @@ export const QUESTION_KIND_LABELS: Record<QuestionKind, string> = {
   code: "コード記述",
 };
 
-export const DIFFICULTY_LABELS: Record<
-  Difficulty,
-  { label: string; desc: string; kinds: string }
-> = {
-  beginner: {
-    label: "初級",
-    desc: "HTML · 6問",
-    kinds: "バグ修正・穴埋め・並び替え・コード・選択",
-  },
-  intermediate: {
-    label: "中級",
-    desc: "Tailwind CSS · 7問",
-    kinds: "選択・並び替え・バグ修正・コード・穴埋め",
-  },
-  advanced: {
-    label: "上級",
-    desc: "JS / React · 5問",
-    kinds: "選択・バグ修正・コード・並び替え",
-  },
+/**
+ * Just the topic tag per difficulty — the question count and which kinds
+ * appear are computed from the actual (editable) question list instead of
+ * being hand-maintained text here, so they can never drift out of date.
+ */
+export const DIFFICULTY_LABELS: Record<Difficulty, { label: string; desc: string }> = {
+  beginner: { label: "初級", desc: "HTML" },
+  intermediate: { label: "中級", desc: "Tailwind CSS" },
+  advanced: { label: "上級", desc: "JS / React" },
 };
 
 /** Every question gets the same 3-minute clock — no per-room or per-kind exceptions. */
