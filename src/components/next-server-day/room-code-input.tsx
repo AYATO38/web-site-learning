@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { ROOM_CODE_LENGTH, normalizeRoomCode } from "@/lib/nsd-room";
 
@@ -16,11 +15,6 @@ export function RoomCodeInput({
   onSubmit?: () => void;
 }) {
   const code = normalizeRoomCode(value);
-  // Armed whenever the code isn't complete yet; firing auto-submit disarms
-  // it, and backspacing below 4 characters re-arms it for the next attempt —
-  // so a completed code submits itself (one less tap on a phone) without
-  // ever re-firing on its own for an already-tried code.
-  const armedRef = useRef(true);
 
   function apply(next: string) {
     onChange(normalizeRoomCode(next));
@@ -34,16 +28,6 @@ export function RoomCodeInput({
     const end = target.value.length;
     target.setSelectionRange(end, end);
   }
-
-  useEffect(() => {
-    if (code.length < ROOM_CODE_LENGTH) {
-      armedRef.current = true;
-      return;
-    }
-    if (disabled || !armedRef.current) return;
-    armedRef.current = false;
-    onSubmit?.();
-  }, [code, disabled, onSubmit]);
 
   return (
     <div className="relative mx-auto w-fit">
@@ -88,6 +72,12 @@ export function RoomCodeInput({
         onPaste={(event) => {
           event.preventDefault();
           apply(event.clipboardData.getData("text"));
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && code.length === ROOM_CODE_LENGTH) {
+            event.preventDefault();
+            onSubmit?.();
+          }
         }}
         className="absolute inset-0 z-10 cursor-text bg-transparent text-[16px] text-transparent caret-transparent outline-none disabled:cursor-not-allowed"
       />

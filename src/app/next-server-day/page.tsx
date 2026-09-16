@@ -940,7 +940,7 @@ export default function NextServerDayPage() {
                   onSubmit={() => void joinRoom()}
                 />
                 <span className="text-center text-xs text-muted-foreground">
-                  4文字です。全角でも入れられます。貼り付けもできます。入力し終わると自動で入ります。
+                  4文字です。全角でも入れられます。貼り付けもできます。
                 </span>
               </label>
               {error && (
