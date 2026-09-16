@@ -268,6 +268,26 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     xp: 60,
   },
   {
+    id: "css-code-opacity",
+    difficulty: "intermediate",
+    category: "CSS",
+    kind: "code",
+    prompt:
+      "カードにマウスを乗せると不透明度が60%になるようにしてください（変化はなめらかに）。div の class に Tailwind のクラスを書いてください。",
+    starter: `<div class="">
+  Card
+</div>`,
+    language: "html",
+    mustIncludeClasses: ["hover:opacity-60"],
+    mustInclude: ["transition"],
+    example: `<div class="transition hover:opacity-60">
+  Card
+</div>`,
+    explanation:
+      "不透明度を変えるのは opacity-〇〇 のクラスです。ホバー時だけ適用するので hover: を付けて hover:opacity-60。変化をなめらかにするには transition を付けます。",
+    xp: 60,
+  },
+  {
     id: "css-blank-responsive",
     difficulty: "intermediate",
     category: "CSS",
@@ -424,6 +444,62 @@ members.forEach((member) => {
     mustNotInclude: ["member.appendChild"],
     explanation:
       "TypeError の原因は member.appendChild です。member はデータなので appendChild できません。親の list に list.appendChild(card) とします。",
+    xp: 70,
+  },
+  {
+    id: "js-code-fetch-json",
+    difficulty: "advanced",
+    category: "JS",
+    kind: "code",
+    prompt:
+      "fetch でリクエストした後、レスポンスの本文をJSONとして読み取り、変数 data に代入する処理を書いてください（await を使うこと）。",
+    starter: `async function loadUser() {
+  const response = await fetch("/api/user");
+
+  console.log(data);
+}`,
+    language: "js",
+    mustInclude: ["await response.json()", "data ="],
+    example: `async function loadUser() {
+  const response = await fetch("/api/user");
+  const data = await response.json();
+
+  console.log(data);
+}`,
+    explanation:
+      "fetch の結果（response）はまだJSONに変換されていません。response.json() で変換しますが、これも非同期処理なので await を付けて完了を待つ必要があります。const data = await response.json(); と書きましょう。",
+    xp: 70,
+  },
+  {
+    id: "js-bugfix-fetch-catch",
+    difficulty: "advanced",
+    category: "JS",
+    kind: "bugfix",
+    prompt:
+      "通信に失敗したときにエラー内容が正しく表示されず、別のエラーになってしまいます。バグを直してください。",
+    starter: `async function loadUser() {
+  try {
+    const response = await fetch("/api/user");
+    const data = await response.json();
+    console.log(data);
+  } catch (err) {
+    console.error(error);
+  }
+}`,
+    solution: `async function loadUser() {
+  try {
+    const response = await fetch("/api/user");
+    const data = await response.json();
+    console.log(data);
+  } catch (err) {
+    console.error(err);
+  }
+}`,
+    language: "js",
+    mustInclude: ["catch (err)", "console.error(err)"],
+    mustNotInclude: ["console.error(error)"],
+    explanation:
+      "catch (err) { ... } の中では、キャッチした例外は err という名前でしか参照できません。console.error(error) は定義されていない error を参照してしまい、通信エラーとは別の ReferenceError になって元のエラー内容が分からなくなります。console.error(err) と直しましょう。",
     xp: 70,
   },
 ];
