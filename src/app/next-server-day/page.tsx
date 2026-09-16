@@ -309,11 +309,15 @@ export default function NextServerDayPage() {
   }, [room, memberId, skipAutoSeat, myTeam, inGallery]);
 
   // Once everyone still active has answered this question too, move on from
-  // the waiting room straight into the standings reveal for everyone.
+  // the waiting room straight into the standings reveal for everyone. Guarded
+  // on `finished` too, defensively: this effect (and the one below it) must
+  // stop reacting for good once the quiz is over, or a `phase` that never
+  // leaves "waiting"/"standings" would re-fire it on every single room poll
+  // forever, hammering the server with duplicate requests.
   useEffect(() => {
-    if (phase !== "waiting" || !room || !memberId) return;
+    if (phase !== "waiting" || !room || !memberId || finished) return;
     if (readyToReveal(room, memberId, current)) revealStandings(room);
-  }, [phase, room, current, memberId]);
+  }, [phase, room, current, memberId, finished]);
 
   // Only the room master decides when standings end for the original synced
   // round (attempt 0). Everyone else's screen (the master's included, for a
@@ -323,9 +327,10 @@ export default function NextServerDayPage() {
   // playthrough and would otherwise skip its standings screen instantly; the
   // player instead gets their own advance button (see canAdvanceStandings).
   useEffect(() => {
-    if (phase !== "standings" || !room || !memberId || attempt > 0) return;
+    if (phase !== "standings" || !room || !memberId || attempt > 0 || finished)
+      return;
     if (room.releasedQuestion >= current) handleContinueFromStandings();
-  }, [phase, room, current, memberId, attempt]);
+  }, [phase, room, current, memberId, attempt, finished]);
 
   /**
    * Patches my own entry in the local room snapshot right away, ahead of the
@@ -492,6 +497,7 @@ export default function NextServerDayPage() {
   function handleContinue() {
     if (current + 1 >= total) {
       setFinished(true);
+      setPhase("answering");
       patchMyRoomMember({ finished: true });
       void syncStatus({
         current,
