@@ -16,6 +16,7 @@ import { EventHero } from "@/components/next-server-day/event-hero";
 import { QuestionBubble } from "@/components/question-bubble";
 import { AnswerPanel } from "@/components/next-server-day/answer-panel";
 import { CodeDiffView } from "@/components/next-server-day/code-diff-view";
+import { CodeExampleView } from "@/components/next-server-day/code-example-view";
 import { cn } from "@/lib/utils";
 import { diffBugfixAnswer } from "@/lib/nsd-code-diff";
 import {
@@ -791,6 +792,22 @@ function KindFields({
           </>
         </Field>
       ) : null}
+      {form.kind === "code" ? (
+        <Field label="解答例（コード全体）">
+          <>
+            <p className="text-xs text-muted-foreground">
+              これと一致すれば自動で正解になります。回答した後、正解・不正解にかかわらず参考としてこの内容を表示します（正誤の色分けはしません）
+            </p>
+            <textarea
+              value={form.example}
+              onChange={(event) => patch({ example: event.target.value })}
+              rows={6}
+              spellCheck={false}
+              className={codeFieldClass}
+            />
+          </>
+        </Field>
+      ) : null}
       <Field label="言語">
         <select
           value={form.language}
@@ -985,6 +1002,12 @@ function QuestionPreview({ question }: { question: NextServerDayQuestion }) {
             {question.explanation}
           </p>
           {diff ? <CodeDiffView diff={diff} /> : null}
+          {question.kind === "code" ? (
+            <>
+              <p className="mt-2 text-xs font-extrabold">解答例</p>
+              <CodeExampleView code={question.example} />
+            </>
+          ) : null}
           <button
             type="button"
             onClick={() => {

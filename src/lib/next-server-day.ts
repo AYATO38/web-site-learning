@@ -47,6 +47,12 @@ export type BugfixQuestion = QuestionBase & {
 export type CodeQuestion = QuestionBase & {
   kind: "code";
   starter?: string;
+  /**
+   * A full worked example shown after answering. Code questions can have
+   * more than one valid solution, so unlike bugfix's `solution` this is
+   * reference material only — never diffed against the answer.
+   */
+  example: string;
   language: "html" | "css" | "js";
   accepted?: string[];
   mustInclude?: string[];

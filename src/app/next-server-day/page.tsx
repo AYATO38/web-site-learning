@@ -1240,6 +1240,7 @@ export default function NextServerDayPage() {
                     draft.kind === "text"
                       ? diffBugfixAnswer(question.starter, question.solution, draft.value)
                       : null,
+                  codeExample: question.kind === "code" ? question.example : null,
                 }
               : null
           }

@@ -250,6 +250,14 @@ export function gradeAnswer(
       accepted: [...(question.accepted ?? []), question.solution],
     });
   }
+  if (question.kind === "code") {
+    // The worked example always counts as an accepted answer too, even
+    // though (unlike bugfix) it's never diffed against a wrong attempt.
+    return gradeWritten(draft.value, {
+      ...question,
+      accepted: [...(question.accepted ?? []), question.example],
+    });
+  }
   return gradeWritten(draft.value, question);
 }
 

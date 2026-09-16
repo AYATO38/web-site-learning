@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
 import { CodeDiffView } from "@/components/next-server-day/code-diff-view";
+import { CodeExampleView } from "@/components/next-server-day/code-example-view";
 import { playResultSfx } from "@/lib/sfx";
 import type { DiffLine } from "@/lib/nsd-code-diff";
 import type { RankedPlayer } from "@/lib/nsd-room";
@@ -30,6 +31,8 @@ export type StandingsRecap = {
   explanation: string;
   /** Bugfix questions answered wrong: the student's code diffed against the model solution. */
   codeDiff?: DiffLine[] | null;
+  /** Code questions: the worked example, shown as reference regardless of correct/wrong. */
+  codeExample?: string | null;
 };
 
 /** Rows start lined up in last reveal's order, so the shuffle below is visible. */
@@ -269,6 +272,12 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
               ）
             </p>
             <CodeDiffView diff={recap.codeDiff} />
+          </>
+        ) : null}
+        {recap.codeExample ? (
+          <>
+            <p className="mt-2 text-xs font-extrabold">解答例</p>
+            <CodeExampleView code={recap.codeExample} />
           </>
         ) : null}
       </div>

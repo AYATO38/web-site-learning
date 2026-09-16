@@ -47,6 +47,8 @@ export type QuestionFormState = {
   starter: string;
   /** bugfix only — the full corrected code, required. */
   solution: string;
+  /** code only — a full worked example shown after answering, required. */
+  example: string;
   language: "html" | "css" | "js";
   accepted: string[];
   mustInclude: string[];
@@ -92,6 +94,7 @@ export function emptyForm(kind: QuestionKind, difficulty: Difficulty): QuestionF
     acceptedOrders: undefined,
     starter: "",
     solution: "",
+    example: "",
     language: "html",
     accepted: [],
     mustInclude: [],
@@ -132,6 +135,7 @@ export function formFromQuestion(question: StoredQuestion): QuestionFormState {
   } else {
     form.starter = question.starter ?? "";
     if (question.kind === "bugfix") form.solution = question.solution;
+    if (question.kind === "code") form.example = question.example;
     form.language = question.language;
     form.accepted = question.accepted ? [...question.accepted] : [];
     form.mustInclude = question.mustInclude ? [...question.mustInclude] : [];
@@ -265,6 +269,7 @@ export function buildQuestion(form: QuestionFormState): NextServerDayQuestion {
   return omitUndefined({
     ...common,
     kind: "code",
+    example: form.example.trim(),
     tests: tests.length ? tests : undefined,
   });
 }

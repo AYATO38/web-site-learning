@@ -235,9 +235,13 @@ export function validateQuestionInput(raw: unknown): ValidationResult {
         };
       }
     }
+    if (!isNonEmptyString(data.example)) {
+      return { ok: false, error: "example（解答例のコード全体）を入力してください" };
+    }
     const question: CodeQuestion = {
       ...common,
       kind: "code",
+      example: data.example,
       tests: data.tests as { call: string; expected: unknown }[] | undefined,
     };
     return { ok: true, question };

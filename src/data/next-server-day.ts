@@ -72,6 +72,7 @@ export const nsdQuestions: NextServerDayQuestion[] = [
     starter: "",
     language: "html",
     mustIncludeOrdered: ["<h1>", "POSSE", "</h1>", "<p>", "学習コミュニティ", "</p>"],
+    example: "<h1>POSSE</h1>\n<p>学習コミュニティ</p>",
     explanation:
       "<h1> が見出し、<p> が段落です。2つを続けて書けばお題どおりになります。",
     xp: 60,
@@ -235,6 +236,7 @@ export const nsdQuestions: NextServerDayQuestion[] = [
 </button>`,
     language: "html",
     mustInclude: ["bg-blue-500", "text-white", "rounded"],
+    example: '<button class="rounded-lg bg-blue-500 px-4 py-2 text-white">参加する</button>',
     explanation:
       '例: <button class="rounded-lg bg-blue-500 px-4 py-2 text-white">参加する</button>',
     xp: 60,
@@ -258,6 +260,9 @@ export const nsdQuestions: NextServerDayQuestion[] = [
       "hover:shadow-lg",
     ],
     mustInclude: ["transition"],
+    example: `<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 hover:shadow-lg transition">
+  <div>Card</div>
+</div>`,
     explanation:
       "grid がないと grid-cols-1 や gap-4 は効きません。スマホ基準の grid-cols-1 から書き、PCは lg:grid-cols-4。余白16pxは gap-4。ホバーは hover:shadow-lg、なめらかさは transition です。",
     xp: 60,
@@ -334,6 +339,9 @@ export const nsdQuestions: NextServerDayQuestion[] = [
       { call: "double(0)", expected: 0 },
       { call: "double(-3)", expected: -6 },
     ],
+    example: `function double(n) {
+  return n * 2;
+}`,
     explanation:
       "return n * 2; と書けば、渡した数を 2 倍して返せます。自動採点でいくつか試しています。",
     xp: 70,
