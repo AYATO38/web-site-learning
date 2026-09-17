@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, Minus, Plus } from "lucide-react";
+import { Sparkles, Minus, Plus, Trash2, X } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { StandingsReveal } from "@/components/next-server-day/standings-reveal";
@@ -45,6 +45,7 @@ import {
   fetchRoom,
   isHost,
   lockedDifficulty,
+  normalizeGalleryCapacity,
   normalizeRoomCode,
   pendingPlayers,
   readyToReveal,
@@ -56,6 +57,12 @@ import {
   type Room,
   type TeamMember,
 } from "@/lib/nsd-room";
+import {
+  deletePreset,
+  loadPresets,
+  savePreset,
+  type RoomPreset,
+} from "@/lib/nsd-presets";
 import { fetchMe } from "@/lib/auth/client";
 import { loadOutfit, normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 import { playCorrectSfx, playWrongSfx } from "@/lib/sfx";
@@ -165,6 +172,9 @@ export default function NextServerDayPage() {
   const [galleryCapacityDraft, setGalleryCapacityDraft] = useState(
     DEFAULT_GALLERY_CAPACITY,
   );
+  const [presets, setPresets] = useState<RoomPreset[]>([]);
+  const [presetNameDraft, setPresetNameDraft] = useState("");
+  const [showPresetSave, setShowPresetSave] = useState(false);
   const [inGallery, setInGallery] = useState(false);
   const [skipAutoSeat, setSkipAutoSeat] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
@@ -204,6 +214,10 @@ export default function NextServerDayPage() {
     if (total === 0) return 0;
     return finished ? 100 : (current / total) * 100;
   }, [current, total, finished]);
+
+  useEffect(() => {
+    setPresets(loadPresets());
+  }, []);
 
   useEffect(() => {
     const key = "nsd-member-id";
@@ -601,6 +615,30 @@ export default function NextServerDayPage() {
     setTeamNameDrafts((prev) => defaultTeamNames(count, prev));
   }
 
+  function applyPreset(preset: RoomPreset) {
+    const count = Math.min(MAX_TEAMS, Math.max(MIN_TEAMS, preset.teamNames.length));
+    setTeamCount(count);
+    setTeamNameDrafts(defaultTeamNames(count, preset.teamNames));
+    setGalleryCapacityDraft(normalizeGalleryCapacity(preset.galleryCapacity));
+  }
+
+  function handleSavePreset() {
+    const name = presetNameDraft.trim();
+    if (!name) return;
+    const next = savePreset({
+      name,
+      teamNames: teamNameDrafts.map((n, i) => n.trim() || `チーム${i + 1}`),
+      galleryCapacity: galleryCapacityDraft,
+    });
+    setPresets(next);
+    setPresetNameDraft("");
+    setShowPresetSave(false);
+  }
+
+  function handleDeletePreset(id: string) {
+    setPresets(deletePreset(id));
+  }
+
   function rememberRoomUrl(id: string) {
     window.history.replaceState(
       null,
@@ -834,6 +872,36 @@ export default function NextServerDayPage() {
 
           {entryMode === "create" ? (
             <>
+              {presets.length > 0 ? (
+                <section className="event-card mb-5 rounded-[1.4rem] p-5">
+                  <p className="text-sm font-bold text-foreground">プリセットから読み込む</p>
+                  <div className="mt-3 flex flex-col gap-2">
+                    {presets.map((preset) => (
+                      <div key={preset.id} className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => applyPreset(preset)}
+                          className="min-w-0 flex-1 truncate rounded-xl border border-border bg-surface-elevated px-4 py-3 text-left text-sm font-semibold text-foreground transition-colors hover:border-accent"
+                        >
+                          {preset.name}
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            {preset.teamNames.length}チーム・ギャラリー{preset.galleryCapacity}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePreset(preset.id)}
+                          aria-label={`${preset.name}を削除`}
+                          className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border text-wrong"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
               <section className="event-card rounded-[1.4rem] p-5">
                 <p className="text-sm font-bold text-foreground">チーム数</p>
                 <div className="mt-3 flex items-center justify-center gap-4">
@@ -935,6 +1003,59 @@ export default function NextServerDayPage() {
                 <p className="mt-2 text-center text-xs text-muted-foreground">
                   0〜{GALLERY_MAX}席
                 </p>
+              </section>
+
+              <section className="mt-5 event-card rounded-[1.4rem] p-5">
+                <p className="text-sm font-bold text-foreground">プリセットとして保存</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  チーム名とギャラリー枠に名前を付けて保存すると、次回このページで読み込めます。
+                </p>
+                {showPresetSave ? (
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={presetNameDraft}
+                      onChange={(e) => setPresetNameDraft(e.target.value)}
+                      maxLength={30}
+                      placeholder="例: 文化祭ver"
+                      autoFocus
+                      className="min-w-0 flex-1 rounded-xl border border-border bg-surface-elevated px-4 py-3 text-sm font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-accent"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSavePreset}
+                      disabled={!presetNameDraft.trim()}
+                      className={cn(
+                        "shrink-0 rounded-xl px-4 py-3 text-sm font-bold",
+                        presetNameDraft.trim()
+                          ? "event-cta"
+                          : "cursor-not-allowed bg-muted text-muted-foreground",
+                      )}
+                    >
+                      保存
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPresetSave(false);
+                        setPresetNameDraft("");
+                      }}
+                      aria-label="キャンセル"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowPresetSave(true)}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold text-foreground"
+                  >
+                    <Plus className="size-4" />
+                    名前を付けて保存
+                  </button>
+                )}
               </section>
 
               <p className="mt-5 text-center text-xs text-muted-foreground">
