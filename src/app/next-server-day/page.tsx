@@ -30,6 +30,7 @@ import { fetchQuestionsList } from "@/lib/nsd-questions-client";
 import {
   canSubmitDraft,
   earnedXp,
+  formatAnswerComparison,
   gradeAnswer,
   initialDraft,
   questionTimeLimit,
@@ -1492,11 +1493,17 @@ export default function NextServerDayPage() {
                   code: question.code,
                   gain: roundResult === "correct" ? lastGain : null,
                   explanation: question.explanation,
+                  ...formatAnswerComparison(question, draft),
                   codeDiff:
                     roundResult === "wrong" &&
                     question.kind === "bugfix" &&
                     draft.kind === "text"
                       ? diffBugfixAnswer(question.starter, question.solution, draft.value)
+                      : null,
+                  solution: question.kind === "bugfix" ? question.solution : null,
+                  yourCode:
+                    question.kind === "code" && draft.kind === "text"
+                      ? draft.value
                       : null,
                   codeExample: question.kind === "code" ? question.example : null,
                 }

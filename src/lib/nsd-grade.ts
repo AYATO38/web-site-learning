@@ -52,6 +52,56 @@ export function initialDraft(question: NextServerDayQuestion): AnswerDraft {
   return { kind: "text", value: starter };
 }
 
+/** Fills a blank template's ___ markers in order, for display (not grading). */
+export function fillBlankTemplate(template: string, values: string[]): string {
+  let index = 0;
+  return template.replace(/___/g, () => {
+    const value = values[index]?.trim();
+    index += 1;
+    return value || "（空欄）";
+  });
+}
+
+export type AnswerComparison = {
+  yourAnswer?: string;
+  correctAnswer?: string;
+};
+
+/**
+ * Formats the player's answer and the correct answer as plain text, for the
+ * choice/blank/order kinds shown side by side on the recap screen. Bugfix
+ * and code answers are code, not short text, so they're handled separately
+ * (a code diff / code blocks) by the caller instead of through this.
+ */
+export function formatAnswerComparison(
+  question: NextServerDayQuestion,
+  draft: AnswerDraft,
+): AnswerComparison {
+  if (question.kind === "choice" && draft.kind === "choice") {
+    return {
+      yourAnswer:
+        draft.index !== null ? question.choices[draft.index] : "（未回答）",
+      correctAnswer: question.choices[question.answerIndex],
+    };
+  }
+  if (question.kind === "blank" && draft.kind === "blanks") {
+    return {
+      yourAnswer: fillBlankTemplate(question.template, draft.values),
+      correctAnswer: fillBlankTemplate(
+        question.template,
+        question.accepted.map((list) => list[0] ?? ""),
+      ),
+    };
+  }
+  if (question.kind === "order" && draft.kind === "order") {
+    return {
+      yourAnswer: draft.items.join(" → "),
+      correctAnswer: question.items.join(" → "),
+    };
+  }
+  return {};
+}
+
 export function canSubmitDraft(
   question: NextServerDayQuestion,
   draft: AnswerDraft,

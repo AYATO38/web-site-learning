@@ -33,8 +33,16 @@ export type StandingsRecap = {
   code?: string;
   gain: { xp: number; bonus: number } | null;
   explanation: string;
+  /** Choice/blank/order: what the player answered, as plain text. */
+  yourAnswer?: string | null;
+  /** Choice/blank/order: the correct answer, as plain text. */
+  correctAnswer?: string | null;
   /** Bugfix questions answered wrong: the student's code diffed against the model solution. */
   codeDiff?: DiffLine[] | null;
+  /** Bugfix questions: the clean full solution, shown alongside the diff. */
+  solution?: string | null;
+  /** Code questions: the player's own submitted code. */
+  yourCode?: string | null;
   /** Code questions: the worked example, shown as reference regardless of correct/wrong. */
   codeExample?: string | null;
 };
@@ -373,6 +381,22 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
             {recap.gain.bonus > 0 ? `（速さボーナス +${recap.gain.bonus}）` : ""}
           </p>
         ) : null}
+        {recap.yourAnswer != null || recap.correctAnswer != null ? (
+          <div className="mt-2 flex flex-col gap-1 text-sm font-semibold leading-relaxed text-foreground">
+            {recap.yourAnswer != null ? (
+              <p>
+                <span className="font-extrabold">あなたの回答: </span>
+                {recap.yourAnswer}
+              </p>
+            ) : null}
+            {recap.correctAnswer != null ? (
+              <p>
+                <span className="font-extrabold">正解: </span>
+                {recap.correctAnswer}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
           <span className="font-extrabold">解説: </span>
           {recap.explanation}
@@ -387,6 +411,18 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
               ）
             </p>
             <CodeDiffView diff={recap.codeDiff} />
+          </>
+        ) : null}
+        {recap.solution ? (
+          <>
+            <p className="mt-2 text-xs font-extrabold">模範解答</p>
+            <CodeExampleView code={recap.solution} />
+          </>
+        ) : null}
+        {recap.yourCode ? (
+          <>
+            <p className="mt-2 text-xs font-extrabold">あなたの回答</p>
+            <CodeExampleView code={recap.yourCode} />
           </>
         ) : null}
         {recap.codeExample ? (
