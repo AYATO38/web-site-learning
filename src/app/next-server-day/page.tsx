@@ -1488,6 +1488,8 @@ export default function NextServerDayPage() {
               ? {
                   result: roundResult,
                   title: feedbackTitle(),
+                  prompt: question.prompt,
+                  code: question.code,
                   gain: roundResult === "correct" ? lastGain : null,
                   explanation: question.explanation,
                   codeDiff:

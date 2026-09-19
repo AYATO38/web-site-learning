@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { QuestionBubble } from "@/components/question-bubble";
 import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
 import { CodeDiffView } from "@/components/next-server-day/code-diff-view";
 import { CodeExampleView } from "@/components/next-server-day/code-example-view";
@@ -27,6 +28,9 @@ const REORDER_DELAY_MS = 1100;
 export type StandingsRecap = {
   result: "correct" | "wrong";
   title: string;
+  /** So the question stays visible on this screen, not just during "answering". */
+  prompt: string;
+  code?: string;
   gain: { xp: number; bonus: number } | null;
   explanation: string;
   /** Bugfix questions answered wrong: the student's code diffed against the model solution. */
@@ -150,7 +154,12 @@ export function StandingsReveal({
         第 {questionNumber} 問しゅうりょう · 全 {total} 問
       </p>
 
-      {recap ? <RecapCard recap={recap} /> : null}
+      {recap ? (
+        <>
+          <QuestionBubble prompt={recap.prompt} code={recap.code} />
+          <RecapCard recap={recap} />
+        </>
+      ) : null}
 
       <ol className="mt-8 flex flex-col gap-2">
         {order.map((player, renderIndex) => {
