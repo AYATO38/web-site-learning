@@ -52,26 +52,35 @@ export function initialDraft(question: NextServerDayQuestion): AnswerDraft {
   return { kind: "text", value: starter };
 }
 
-/** Fills a blank template's ___ markers in order, for display (not grading). */
-export function fillBlankTemplate(template: string, values: string[]): string {
-  let index = 0;
-  return template.replace(/___/g, () => {
-    const value = values[index]?.trim();
-    index += 1;
-    return value || "（空欄）";
-  });
+/**
+ * A blank template split around its ___ markers, with one value per blank —
+ * `parts.length === values.length + 1`. `null` marks a blank left empty, so
+ * the caller can render it as a distinct "missing" word instead of losing it
+ * inside a wall of sentence text.
+ */
+export type TemplateFill = { parts: string[]; values: (string | null)[] };
+
+function fillOf(template: string, values: string[]): TemplateFill {
+  return {
+    parts: template.split("___"),
+    values: values.map((value) => value.trim() || null),
+  };
 }
 
 export type AnswerComparison = {
   yourAnswer?: string;
   correctAnswer?: string;
+  yourAnswerFill?: TemplateFill;
+  correctAnswerFill?: TemplateFill;
 };
 
 /**
- * Formats the player's answer and the correct answer as plain text, for the
- * choice/blank/order kinds shown side by side on the recap screen. Bugfix
- * and code answers are code, not short text, so they're handled separately
- * (a code diff / code blocks) by the caller instead of through this.
+ * Formats the player's answer and the correct answer for the recap screen —
+ * plain text for choice/order, or a TemplateFill for blank (so an empty
+ * blank renders as its own marked word instead of plain text buried in a
+ * sentence). Bugfix and code answers are code, not short text, so they're
+ * handled separately (a code diff / code blocks) by the caller instead of
+ * through this.
  */
 export function formatAnswerComparison(
   question: NextServerDayQuestion,
@@ -86,8 +95,8 @@ export function formatAnswerComparison(
   }
   if (question.kind === "blank" && draft.kind === "blanks") {
     return {
-      yourAnswer: fillBlankTemplate(question.template, draft.values),
-      correctAnswer: fillBlankTemplate(
+      yourAnswerFill: fillOf(question.template, draft.values),
+      correctAnswerFill: fillOf(
         question.template,
         question.accepted.map((list) => list[0] ?? ""),
       ),

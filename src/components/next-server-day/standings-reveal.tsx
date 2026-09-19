@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   Check,
   ChevronDown,
@@ -17,6 +17,7 @@ import { CodeDiffView } from "@/components/next-server-day/code-diff-view";
 import { CodeExampleView } from "@/components/next-server-day/code-example-view";
 import { playResultSfx } from "@/lib/sfx";
 import type { DiffLine } from "@/lib/nsd-code-diff";
+import type { TemplateFill } from "@/lib/nsd-grade";
 import type { RankedPlayer } from "@/lib/nsd-room";
 
 const STAGGER_MS = 80;
@@ -33,10 +34,14 @@ export type StandingsRecap = {
   code?: string;
   gain: { xp: number; bonus: number } | null;
   explanation: string;
-  /** Choice/blank/order: what the player answered, as plain text. */
+  /** Choice/order: what the player answered, as plain text. */
   yourAnswer?: string | null;
-  /** Choice/blank/order: the correct answer, as plain text. */
+  /** Choice/order: the correct answer, as plain text. */
   correctAnswer?: string | null;
+  /** Blank: what the player filled in — an empty blank renders as its own marked word. */
+  yourAnswerFill?: TemplateFill | null;
+  /** Blank: the correct fill. */
+  correctAnswerFill?: TemplateFill | null;
   /** Bugfix questions answered wrong: the student's code diffed against the model solution. */
   codeDiff?: DiffLine[] | null;
   /** Bugfix questions: the clean full solution, shown alongside the diff. */
@@ -352,12 +357,12 @@ function TeamRosterModal({
 
 function AnswerBox({
   label,
-  value,
   tone,
+  children,
 }: {
   label: string;
-  value: string;
   tone: "neutral" | "accent";
+  children: ReactNode;
 }) {
   return (
     <div
@@ -376,10 +381,39 @@ function AnswerBox({
       >
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
-        {value}
-      </p>
+      <div className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
+        {children}
+      </div>
     </div>
+  );
+}
+
+/**
+ * A blank-fill template rendered as sentence text with each blank's value as
+ * its own inline word — an empty blank is a clearly marked "missing" chip
+ * instead of blending into the surrounding line as plain text.
+ */
+function FilledTemplateText({ fill }: { fill: TemplateFill }) {
+  return (
+    <p className="leading-loose">
+      {fill.parts.map((part, index) => (
+        <span key={index}>
+          {part}
+          {index < fill.values.length ? (
+            <span
+              className={cn(
+                "mx-1 inline-block rounded-md px-1.5 py-0.5 align-middle font-mono text-xs font-bold",
+                fill.values[index] == null
+                  ? "bg-wrong-surface text-wrong"
+                  : "bg-muted text-foreground",
+              )}
+            >
+              {fill.values[index] ?? "空欄"}
+            </span>
+          ) : null}
+        </span>
+      ))}
+    </p>
   );
 }
 
@@ -414,13 +448,28 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
             {recap.gain.bonus > 0 ? `（速さボーナス +${recap.gain.bonus}）` : ""}
           </p>
         ) : null}
-        {recap.yourAnswer != null || recap.correctAnswer != null ? (
+        {recap.yourAnswer != null ||
+        recap.correctAnswer != null ||
+        recap.yourAnswerFill ||
+        recap.correctAnswerFill ? (
           <div className="mt-2 flex flex-col gap-2">
             {recap.yourAnswer != null ? (
-              <AnswerBox label="あなたの回答" tone="neutral" value={recap.yourAnswer} />
+              <AnswerBox label="あなたの回答" tone="neutral">
+                {recap.yourAnswer}
+              </AnswerBox>
+            ) : recap.yourAnswerFill ? (
+              <AnswerBox label="あなたの回答" tone="neutral">
+                <FilledTemplateText fill={recap.yourAnswerFill} />
+              </AnswerBox>
             ) : null}
             {recap.correctAnswer != null ? (
-              <AnswerBox label="正解" tone="accent" value={recap.correctAnswer} />
+              <AnswerBox label="正解" tone="accent">
+                {recap.correctAnswer}
+              </AnswerBox>
+            ) : recap.correctAnswerFill ? (
+              <AnswerBox label="正解" tone="accent">
+                <FilledTemplateText fill={recap.correctAnswerFill} />
+              </AnswerBox>
             ) : null}
           </div>
         ) : null}
