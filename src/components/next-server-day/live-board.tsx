@@ -9,10 +9,8 @@ import { HostMark } from "@/components/next-server-day/host-mark";
 import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
 
 function statusClass(member: TeamMember) {
-  if (member.finished || member.lastResult === "correct") {
-    return "bg-accent-soft text-accent";
-  }
-  if (member.lastResult === "wrong") return "bg-wrong-surface text-wrong";
+  if (member.finished) return "bg-accent-soft text-accent";
+  if (member.lastResult !== null) return "bg-muted text-foreground";
   return "bg-background text-muted-foreground";
 }
 

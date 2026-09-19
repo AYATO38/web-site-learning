@@ -27,14 +27,8 @@ export function AnswerPanel({
     return (
       <div className="mt-6 grid gap-3">
         {question.choices.map((choice, index) => {
-          let status: "idle" | "selected" | "correct" | "wrong" = "idle";
-          if (phase === "answering") {
-            status = draft.index === index ? "selected" : "idle";
-          } else if (index === question.answerIndex) {
-            status = "correct";
-          } else if (index === draft.index) {
-            status = "wrong";
-          }
+          const status: "idle" | "selected" =
+            draft.index === index ? "selected" : "idle";
           return (
             <ChoiceButton
               key={choice}

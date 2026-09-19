@@ -90,6 +90,7 @@ export function StandingsReveal({
   const [order, setOrder] = useState(() =>
     reduceMotion ? snapshot : orderByPreviousRank(snapshot, previousRanks),
   );
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const nodeRefs = useRef(new Map<string, HTMLLIElement>());
   const flipFromRef = useRef<Map<string, number> | null>(null);
 
@@ -192,10 +193,14 @@ export function StandingsReveal({
                   {player.name}
                   {isMine ? "（あなた）" : ""}
                 </p>
-                <p className="truncate text-[11px] text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => setExpandedTeam(player.teamName)}
+                  className="truncate text-left text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+                >
                   {player.teamName}
                   {player.combo >= 2 ? ` · ${player.combo}連続` : ""}
-                </p>
+                </button>
               </div>
               <DeltaBadge delta={delta} isNew={isNew} />
               <span className="w-14 shrink-0 text-right text-sm font-black tabular-nums">
@@ -223,6 +228,107 @@ export function StandingsReveal({
           ルームマスターが{isLast ? "結果発表" : "次の問題"}に進めるのを待っています
         </p>
       )}
+
+      {expandedTeam ? (
+        <TeamRosterModal
+          teamName={expandedTeam}
+          members={snapshot.filter((player) => player.teamName === expandedTeam)}
+          onClose={() => setExpandedTeam(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Any team's name is tappable by anyone — matches this room's existing full cross-team visibility (e.g. LiveBoard). */
+function TeamRosterModal({
+  teamName,
+  members,
+  onClose,
+}: {
+  teamName: string;
+  members: RankedPlayer[];
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-4 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="team-roster-title"
+      onClick={onClose}
+    >
+      <div
+        className="event-card w-full max-w-md rounded-[1.4rem] p-5"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="section-en">Team</p>
+            <h2 id="team-roster-title" className="mt-1 text-lg font-black tracking-tight">
+              {teamName}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="閉じる"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 max-h-[70vh] overflow-y-auto">
+          <ul className="flex flex-col gap-3">
+            {members.map((member) => (
+              <li key={member.id} className="rounded-xl bg-muted p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-bold">
+                    <PlayerAvatar
+                      outfit={member.outfit}
+                      name={member.name}
+                      size="sm"
+                      className="size-6 ring-1"
+                    />
+                    <span className="truncate">{member.name}</span>
+                  </p>
+                  <span className="shrink-0 text-sm font-black tabular-nums">
+                    {member.xp} XP
+                  </span>
+                </div>
+                {member.answers.length > 0 ? (
+                  <div className="mt-2 -mx-1 overflow-x-auto px-1">
+                    <div className="flex gap-1.5">
+                      {member.answers.map((answer, index) => (
+                        <span
+                          key={index}
+                          className={cn(
+                            "flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold",
+                            answer.correct
+                              ? "bg-correct-surface text-accent"
+                              : "bg-wrong-surface text-wrong",
+                          )}
+                        >
+                          問{index + 1}
+                          {answer.correct ? (
+                            <Check className="size-3" strokeWidth={3} />
+                          ) : (
+                            <X className="size-3" strokeWidth={3} />
+                          )}
+                          {answer.correct ? `+${answer.xp}` : null}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">まだ回答がありません</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Trophy, Medal, RotateCcw } from "lucide-react";
+import { Loader2, Trophy, Medal, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DIFFICULTY_LABELS } from "@/lib/next-server-day";
+import { DIFFICULTY_LABELS, nextDifficulty, type Difficulty } from "@/lib/next-server-day";
 import {
   allTeamsDone,
+  isHost,
+  lockedDifficulty,
+  teamOverallXp,
   teamXp,
   type Room,
   type TeamStatus,
@@ -43,6 +46,7 @@ export function ResultScreen({
   xp,
   bestCombo,
   onRestart,
+  onAdvanceDifficulty,
   spectator = false,
 }: {
   room: Room;
@@ -53,14 +57,19 @@ export function ResultScreen({
   xp: number;
   bestCombo: number;
   onRestart: () => void;
+  onAdvanceDifficulty: (next: Difficulty) => void;
   spectator?: boolean;
 }) {
   const ranked = [...room.teams]
     .filter((team) => team.members.length > 0)
     .sort((a, b) => teamXp(b) - teamXp(a));
+  const overallRanked = [...room.teams]
+    .filter((team) => team.members.length > 0)
+    .sort((a, b) => teamOverallXp(b) - teamOverallXp(a));
   const myRank = ranked.findIndex((t) => t.name === myTeam);
   const allDone = allTeamsDone(room);
   const winner = ranked[0];
+  const upNext = nextDifficulty(lockedDifficulty(room) ?? "advanced");
   const [revealed, setRevealed] = useState(false);
   const revealedRef = useRef(false);
 
@@ -135,10 +144,33 @@ export function ResultScreen({
                   index={index}
                   isMine={Boolean(myTeam && team.name === myTeam)}
                   room={room}
+                  xp={teamXp(team)}
                 />
               ))}
             </ol>
           </section>
+
+          {!upNext ? (
+            <section className="event-card mt-6 rounded-2xl p-4">
+              <p className="section-en">Overall</p>
+              <h2 className="mt-1 text-base font-bold">総合順位</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                これまでに挑戦した難易度の合計ポイントです
+              </p>
+              <ol className="mt-4 flex flex-col gap-2">
+                {overallRanked.map((team, index) => (
+                  <RankRow
+                    key={team.name}
+                    team={team}
+                    index={index}
+                    isMine={Boolean(myTeam && team.name === myTeam)}
+                    room={room}
+                    xp={teamOverallXp(team)}
+                  />
+                ))}
+              </ol>
+            </section>
+          ) : null}
         </>
       ) : (
         <div className="mt-8">
@@ -178,11 +210,28 @@ export function ResultScreen({
             </dl>
           </section>
 
+          {allDone && revealed && upNext ? (
+            isHost(room, myMemberId) ? (
+              <button
+                type="button"
+                onClick={() => onAdvanceDifficulty(upNext)}
+                className="event-cta mt-8 w-full rounded-full py-4 text-lg font-bold"
+              >
+                {DIFFICULTY_LABELS[upNext].label}に進む
+              </button>
+            ) : (
+              <p className="mt-8 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                ルームマスターが次の難易度に進めるのを待っています
+              </p>
+            )
+          ) : null}
+
           {spectator ? null : (
             <button
               type="button"
               onClick={onRestart}
-              className="event-cta mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full py-4 text-lg font-semibold"
+              className="event-cta mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full py-4 text-lg font-semibold"
             >
               <RotateCcw className="size-5" />
               もう一度挑戦
@@ -242,13 +291,14 @@ function RankRow({
   index,
   isMine,
   room,
+  xp,
 }: {
   team: TeamStatus;
   index: number;
   isMine: boolean;
   room: Room;
+  xp: number;
 }) {
-  const xp = teamXp(team);
   return (
     <li
       className={cn(

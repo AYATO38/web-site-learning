@@ -40,6 +40,7 @@ import {
   DEFAULT_GALLERY_CAPACITY,
   GALLERY_MAX,
   ROOM_CODE_LENGTH,
+  advanceDifficulty,
   allTeamsDone,
   createRoom,
   fetchRoom,
@@ -53,6 +54,7 @@ import {
   roomRanking,
   updateRoomSettings,
   updateTeamStatus,
+  type AnswerLogEntry,
   type RankedPlayer,
   type Room,
   type TeamMember,
@@ -185,8 +187,21 @@ export default function NextServerDayPage() {
   const [standingsSnapshot, setStandingsSnapshot] = useState<
     RankedPlayer[] | null
   >(null);
+  const [answers, setAnswers] = useState<AnswerLogEntry[]>([]);
   const standingsPrevRanks = useRef<Map<string, number> | null>(null);
   const nameTouchedRef = useRef(false);
+  // Mirrors `memberId` outside of React's render/closure cycle: an async
+  // callback captured by an early render (e.g. the mount effect's own
+  // `enterRoomByCode` call) would otherwise keep reading that render's stale
+  // `null`, even after `setMemberId` has since resolved — which would make
+  // `adoptRoomIdentity` mint a second, different id instead of reusing the
+  // one already assigned.
+  const memberIdRef = useRef<string | null>(null);
+
+  function assignMemberId(id: string) {
+    memberIdRef.current = id;
+    setMemberId(id);
+  }
 
   const inQuiz = Boolean(room && myTeam && selectedDifficulty && !finished);
   useLockQuizLeave(inQuiz);
@@ -220,18 +235,17 @@ export default function NextServerDayPage() {
   }, []);
 
   useEffect(() => {
-    const key = "nsd-member-id";
-    let id = sessionStorage.getItem(key);
-    if (!id) {
-      id = crypto.randomUUID();
-      sessionStorage.setItem(key, id);
-    }
-    setMemberId(id);
+    // A placeholder identity until a room is resolved — `adoptRoomIdentity`
+    // (below) then either reuses a room-scoped id already remembered for
+    // that specific room, or keeps this one. Room-scoped (not global) so two
+    // teammates sharing one browser (two tabs, one laptop) don't merge into
+    // a single identity.
+    assignMemberId(crypto.randomUUID());
 
     // A guest name typed last time fills the field right away; the account
     // name (once it loads) always takes priority as the default, unless the
     // player has already started typing their own.
-    const savedName = sessionStorage.getItem("nsd-member-name");
+    const savedName = localStorage.getItem("nsd-member-name");
     if (savedName && !nameTouchedRef.current) setDisplayName(savedName);
 
     void fetchMe()
@@ -254,6 +268,12 @@ export default function NextServerDayPage() {
       setEntryMode("join");
       setJoinCode(code);
       void enterRoomByCode(code);
+    } else {
+      // No specific link this time — if a tab close (or a crash) dropped us
+      // out of a room, this is what lets a bare visit to /next-server-day
+      // still find our way back in, instead of only a bookmarked ?room= link.
+      const lastRoom = localStorage.getItem("nsd-last-room");
+      if (lastRoom) void silentlyResumeLastRoom(lastRoom);
     }
 
     void fetchQuestionsList()
@@ -265,6 +285,20 @@ export default function NextServerDayPage() {
         /* keep the bundled defaults this page already started with */
       });
   }, []);
+
+  // Cleared only on an intentional exit (this unmount, or resetToEntry below)
+  // so a closed tab or a crash leaves it in place for the mount effect above
+  // to find next time.
+  useEffect(
+    () => () => {
+      try {
+        localStorage.removeItem("nsd-last-room");
+      } catch {
+        /* ignore */
+      }
+    },
+    [],
+  );
 
   function handleDisplayNameChange(value: string) {
     nameTouchedRef.current = true;
@@ -296,27 +330,8 @@ export default function NextServerDayPage() {
     };
   }, [roomId]);
 
-  useEffect(() => {
-    if (!room || !myTeam || !memberId || selectedDifficulty) return;
-    const team = room.teams.find((item) => item.name === myTeam);
-    if (!team?.difficulty) return;
-
-    const me = team.members.find((member) => member.id === memberId);
-    setSelectedDifficulty(team.difficulty);
-
-    if (me && me.total > 0) {
-      setCurrent(me.current);
-      setCombo(me.combo);
-      setXp(me.xp);
-      setFinished(me.finished);
-      setRoundResult(me.lastResult);
-      // Already answered this question — the waiting/standings effects below
-      // will sort out whether everyone else (and the master) are ready too.
-      setPhase(me.lastResult ? "waiting" : "answering");
-      return;
-    }
-
-    const count = questions.filter((q) => q.difficulty === team.difficulty).length;
+  /** Resets every piece of local per-run progress to a fresh run's starting state. */
+  function resetLocalRunState() {
     setCurrent(0);
     setCombo(0);
     setBrokenCombo(0);
@@ -327,6 +342,41 @@ export default function NextServerDayPage() {
     setRoundResult(null);
     setFinished(false);
     setTimedOut(false);
+    setLastGain(null);
+    setAnswers([]);
+    setStandingsSnapshot(null);
+    standingsPrevRanks.current = null;
+  }
+
+  // Re-syncs from the room's own state whenever the locked difficulty for my
+  // team differs from what I have locally — covers the first difficulty
+  // pick, a reconnect mid-run (any difficulty), AND the room master
+  // advancing everyone to the next difficulty (every member's fields are
+  // already reset server-side by then, so the "fresh start" branch below
+  // fires correctly and gets us out of ResultScreen on its own).
+  useEffect(() => {
+    if (!room || !myTeam || !memberId) return;
+    const team = room.teams.find((item) => item.name === myTeam);
+    if (!team?.difficulty || team.difficulty === selectedDifficulty) return;
+
+    const me = team.members.find((member) => member.id === memberId);
+    setSelectedDifficulty(team.difficulty);
+
+    if (me && me.total > 0) {
+      setCurrent(me.current);
+      setCombo(me.combo);
+      setXp(me.xp);
+      setFinished(me.finished);
+      setRoundResult(me.lastResult);
+      setAnswers(me.answers ?? []);
+      // Already answered this question — the waiting/standings effects below
+      // will sort out whether everyone else (and the master) are ready too.
+      setPhase(me.lastResult ? "waiting" : "answering");
+      return;
+    }
+
+    const count = questions.filter((q) => q.difficulty === team.difficulty).length;
+    resetLocalRunState();
     void syncStatus({
       difficulty: team.difficulty,
       current: 0,
@@ -335,14 +385,23 @@ export default function NextServerDayPage() {
       xp: 0,
       lastResult: null,
       finished: false,
+      answers: [],
     });
   }, [room, myTeam, memberId, selectedDifficulty, questions]);
 
+  // Rejoining a room we're already a member of (a reconnect after a closed
+  // tab, or a same-tab reload) seats us back automatically — no need to
+  // re-tap a team, which would otherwise create a second, empty member row.
   useEffect(() => {
     if (!room || !memberId || skipAutoSeat || myTeam || inGallery) return;
     if (room.gallery.some((guest) => guest.id === memberId)) {
       setInGallery(true);
+      return;
     }
+    const team = room.teams.find((item) =>
+      item.members.some((member) => member.id === memberId),
+    );
+    if (team) setMyTeam(team.name);
   }, [room, memberId, skipAutoSeat, myTeam, inGallery]);
 
   // Once everyone still active has answered this question too, move on from
@@ -406,6 +465,7 @@ export default function NextServerDayPage() {
     xp?: number;
     lastResult?: "correct" | "wrong" | null;
     finished?: boolean;
+    answers?: AnswerLogEntry[];
   }) {
     if (!roomId || !myTeam || !memberId) return;
     try {
@@ -424,14 +484,23 @@ export default function NextServerDayPage() {
   }
 
   function applyWrong(fromTimeout: boolean) {
+    const nextAnswers = [...answers, { correct: false, xp: 0 }];
     setBrokenCombo(combo);
     setCombo(0);
     setTimedOut(fromTimeout);
     setRoundResult("wrong");
     setPhase("waiting");
     setLastGain(null);
+    setAnswers(nextAnswers);
     void playWrongSfx();
-    patchMyRoomMember({ current, total, combo: 0, xp, lastResult: "wrong" });
+    patchMyRoomMember({
+      current,
+      total,
+      combo: 0,
+      xp,
+      lastResult: "wrong",
+      answers: nextAnswers,
+    });
     void syncStatus({
       current,
       total,
@@ -439,6 +508,7 @@ export default function NextServerDayPage() {
       xp,
       lastResult: "wrong",
       finished: false,
+      answers: nextAnswers,
     });
   }
 
@@ -473,6 +543,7 @@ export default function NextServerDayPage() {
       });
       const nextCombo = combo + 1;
       const nextXp = xp + gain.xp;
+      const nextAnswers = [...answers, { correct: true, xp: gain.xp }];
       setCombo(nextCombo);
       setXp(nextXp);
       setLastGain(gain);
@@ -481,6 +552,7 @@ export default function NextServerDayPage() {
       setTimedOut(false);
       setRoundResult("correct");
       setPhase("waiting");
+      setAnswers(nextAnswers);
       void playCorrectSfx(nextCombo);
       patchMyRoomMember({
         current,
@@ -488,6 +560,7 @@ export default function NextServerDayPage() {
         combo: nextCombo,
         xp: nextXp,
         lastResult: "correct",
+        answers: nextAnswers,
       });
       void syncStatus({
         current,
@@ -496,6 +569,7 @@ export default function NextServerDayPage() {
         xp: nextXp,
         lastResult: "correct",
         finished: false,
+        answers: nextAnswers,
       });
     } else {
       applyWrong(false);
@@ -563,19 +637,7 @@ export default function NextServerDayPage() {
     const count = selectedDifficulty
       ? questions.filter((q) => q.difficulty === selectedDifficulty).length
       : 0;
-    setCurrent(0);
-    setPhase("answering");
-    setFinished(false);
-    setCombo(0);
-    setBrokenCombo(0);
-    setXp(0);
-    setCorrectCount(0);
-    setBestCombo(0);
-    setTimedOut(false);
-    setLastGain(null);
-    setRoundResult(null);
-    setStandingsSnapshot(null);
-    standingsPrevRanks.current = null;
+    resetLocalRunState();
     setAttempt((n) => n + 1);
     void syncStatus({
       current: 0,
@@ -584,6 +646,7 @@ export default function NextServerDayPage() {
       xp: 0,
       lastResult: null,
       finished: false,
+      answers: [],
     });
   }
 
@@ -604,9 +667,15 @@ export default function NextServerDayPage() {
     setBestCombo(0);
     setTimedOut(false);
     setRoundResult(null);
+    setAnswers([]);
     setStandingsSnapshot(null);
     standingsPrevRanks.current = null;
     window.history.replaceState(null, "", "/next-server-day");
+    try {
+      localStorage.removeItem("nsd-last-room");
+    } catch {
+      /* ignore */
+    }
   }
 
   function changeTeamCount(next: number) {
@@ -645,6 +714,32 @@ export default function NextServerDayPage() {
       "",
       `/next-server-day?room=${encodeURIComponent(id)}`,
     );
+    try {
+      localStorage.setItem("nsd-last-room", id);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /**
+   * The member id for this specific room, remembered per-room in
+   * localStorage so it survives a closed tab (unlike the old sessionStorage
+   * id) without merging two different people who happen to share a browser
+   * across different rooms. Falls back to whatever id is already assigned
+   * (via the ref, not the possibly-stale `memberId` closure) rather than
+   * minting a fresh one, so a room we just created with us as host doesn't
+   * end up remembering a different id than the one the server recorded.
+   */
+  function adoptRoomIdentity(roomCode: string): string {
+    const key = `nsd-member-id:${roomCode}`;
+    const existing = localStorage.getItem(key);
+    const id = existing ?? memberIdRef.current ?? crypto.randomUUID();
+    try {
+      localStorage.setItem(key, id);
+    } catch {
+      /* ignore */
+    }
+    return id;
   }
 
   async function startWithTeams() {
@@ -668,6 +763,7 @@ export default function NextServerDayPage() {
       setTeams(names);
       setRoom(created);
       setRoomId(created.id);
+      assignMemberId(adoptRoomIdentity(created.id));
       rememberRoomUrl(created.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "部屋を作成できませんでした");
@@ -692,12 +788,36 @@ export default function NextServerDayPage() {
       }
       setRoom(found);
       setRoomId(found.id);
+      assignMemberId(adoptRoomIdentity(found.id));
       setTeams(found.teams.map((t) => t.name));
       rememberRoomUrl(found.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "部屋に入れませんでした");
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * Silent counterpart to enterRoomByCode, used only for the localStorage
+   * "last room" fallback on a bare page visit — no ?room= link, no typed
+   * code, so a miss should never surface an error message the user has no
+   * context for.
+   */
+  async function silentlyResumeLastRoom(code: string) {
+    try {
+      const found = await fetchRoom(code);
+      if (!found) {
+        localStorage.removeItem("nsd-last-room");
+        return;
+      }
+      setRoom(found);
+      setRoomId(found.id);
+      assignMemberId(adoptRoomIdentity(found.id));
+      setTeams(found.teams.map((t) => t.name));
+      rememberRoomUrl(found.id);
+    } catch {
+      /* keep the fallback for next time; this may have just been offline */
     }
   }
 
@@ -725,6 +845,19 @@ export default function NextServerDayPage() {
     }
   }
 
+  async function handleAdvanceDifficulty(next: Difficulty) {
+    if (!roomId || !memberId || !room || !isHost(room, memberId)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setRoom(await advanceDifficulty(roomId, memberId, next));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "進められませんでした");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function chooseTeam(name: string) {
     const playerName = displayName.trim();
     if (!playerName) {
@@ -738,7 +871,7 @@ export default function NextServerDayPage() {
     setBusy(true);
     setError(null);
     try {
-      sessionStorage.setItem("nsd-member-name", playerName);
+      localStorage.setItem("nsd-member-name", playerName);
       const next = await updateTeamStatus(roomId, {
         teamName: name,
         memberId,
@@ -769,7 +902,7 @@ export default function NextServerDayPage() {
     setBusy(true);
     setError(null);
     try {
-      sessionStorage.setItem("nsd-member-name", playerName);
+      localStorage.setItem("nsd-member-name", playerName);
       const next = await updateTeamStatus(roomId, {
         teamName: "",
         memberId,
@@ -1226,6 +1359,7 @@ export default function NextServerDayPage() {
             xp={0}
             bestCombo={0}
             onRestart={reselectSeat}
+            onAdvanceDifficulty={handleAdvanceDifficulty}
             spectator
           />
         ) : (
@@ -1331,6 +1465,7 @@ export default function NextServerDayPage() {
           xp={xp}
           bestCombo={bestCombo}
           onRestart={handleRestart}
+          onAdvanceDifficulty={handleAdvanceDifficulty}
         />
       </EventShell>
     );
@@ -1436,7 +1571,7 @@ export default function NextServerDayPage() {
             {QUESTION_KIND_LABELS[question.kind]} · もんだい {current + 1} / {total}
           </p>
           <div className="flex items-center gap-2">
-            {combo >= 2 && (
+            {phase === "answering" && combo >= 2 && (
               <span className="rounded-full bg-accent px-3 py-1 text-sm font-semibold text-white">
                 {combo}連続！
               </span>
@@ -1444,9 +1579,7 @@ export default function NextServerDayPage() {
             <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-semibold text-foreground">
               {phase === "answering" && previewGain
                 ? `今 +${previewGain.xp} XP`
-                : lastGain
-                  ? `+${lastGain.xp} XP`
-                  : `XP +${question.xp}〜${question.xp * 2}`}
+                : `XP +${question.xp}〜${question.xp * 2}`}
             </span>
           </div>
         </div>

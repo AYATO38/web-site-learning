@@ -97,3 +97,10 @@ export const DIFFICULTY_LABELS: Record<Difficulty, { label: string; desc: string
 /** Every question gets the same 3-minute clock — no per-room or per-kind exceptions. */
 export const QUESTION_TIME_LIMIT_SECONDS = 180;
 export const QUESTION_TIME_LIMIT_LABEL = "1問3分";
+
+const DIFFICULTY_ORDER: Difficulty[] = ["beginner", "intermediate", "advanced"];
+
+/** The next difficulty after this one in the fixed progression, or null if there isn't one. */
+export function nextDifficulty(current: Difficulty): Difficulty | null {
+  return DIFFICULTY_ORDER[DIFFICULTY_ORDER.indexOf(current) + 1] ?? null;
+}

@@ -7,6 +7,17 @@ import { normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
 
 export type LastResult = "correct" | "wrong" | null;
 
+/** One answered question's outcome, in question order (no questionId needed). */
+export type AnswerLogEntry = { correct: boolean; xp: number };
+
+/** A completed difficulty run, archived when the room master advances to the next one. */
+export type RunHistoryEntry = {
+  difficulty: Difficulty;
+  xp: number;
+  correctCount: number;
+  total: number;
+};
+
 export type TeamMember = {
   id: string;
   name: string;
@@ -19,6 +30,8 @@ export type TeamMember = {
   outfit: MascotOutfit | null;
   joinedAt: number;
   updatedAt: number;
+  answers: AnswerLogEntry[];
+  runHistory: RunHistoryEntry[];
 };
 
 export type TeamStatus = {
@@ -75,6 +88,8 @@ export type RoomSettingsPatch = {
   difficulty?: Difficulty;
   /** Room master releasing everyone past this question's standings. */
   releaseQuestion?: number;
+  /** Room master advancing every team to the next difficulty in this same room. */
+  advanceDifficulty?: Difficulty;
 };
 
 export type RoomUpdate = TeamStatusUpdate & {
@@ -168,7 +183,67 @@ function emptyMember(id: string, name: string): TeamMember {
     outfit: null,
     joinedAt: now,
     updatedAt: now,
+    answers: [],
+    runHistory: [],
   };
+}
+
+/**
+ * Resets a member to a fresh run's starting state, preserving identity
+ * (id/name/outfit/joinedAt) and runHistory — used when the room master
+ * advances the whole room to the next difficulty.
+ */
+export function resetMemberForNewRun(member: TeamMember): TeamMember {
+  return {
+    ...member,
+    current: 0,
+    total: 0,
+    combo: 0,
+    xp: 0,
+    lastResult: null,
+    finished: false,
+    answers: [],
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * Room master only: archives every member's just-finished run into their
+ * runHistory, then resets everyone and moves every team to the next
+ * difficulty at once — unlike lockRoomDifficulty, this is allowed to change
+ * an already-set difficulty.
+ */
+function advanceRoomDifficulty(room: Room, difficulty: Difficulty) {
+  for (const team of room.teams) {
+    team.members = team.members.map((member) => {
+      const archived =
+        member.total > 0
+          ? {
+              ...member,
+              runHistory: [
+                ...(member.runHistory ?? []),
+                {
+                  difficulty: team.difficulty as Difficulty,
+                  xp: member.xp,
+                  correctCount: (member.answers ?? []).filter(
+                    (answer) => answer.correct,
+                  ).length,
+                  total: member.total,
+                },
+              ],
+            }
+          : member;
+      return resetMemberForNewRun(archived);
+    });
+    team.difficulty = difficulty;
+    team.updatedAt = Date.now();
+  }
+  // A run's release signal must not leak into the next run's very first
+  // question — otherwise everyone's first standings screen there would
+  // auto-skip instantly, as if the master had already released it.
+  room.releasedQuestion = -1;
+  room.settingsNotice = `ルームマスターが${DIFFICULTY_LABELS[difficulty].label}に進みました`;
+  room.settingsUpdatedAt = Date.now();
 }
 
 function syncHostName(room: Room, memberId: string, name: string) {
@@ -195,6 +270,9 @@ export function applyRoomUpdate(
     }
     if (isDifficulty(update.settings.difficulty) && !lockedDifficulty(next)) {
       lockRoomDifficulty(next, update.settings.difficulty);
+    }
+    if (isDifficulty(update.settings.advanceDifficulty)) {
+      advanceRoomDifficulty(next, update.settings.advanceDifficulty);
     }
     if (typeof update.settings.releaseQuestion === "number") {
       next.releasedQuestion = Math.max(
@@ -277,6 +355,7 @@ export function applyRoomUpdate(
   if (update.xp !== undefined) member.xp = update.xp;
   if (update.lastResult !== undefined) member.lastResult = update.lastResult;
   if (update.finished !== undefined) member.finished = update.finished;
+  if (update.answers !== undefined) member.answers = update.answers;
 
   const now = Date.now();
   member.updatedAt = now;
@@ -297,10 +376,22 @@ export type TeamStatusUpdate = {
   xp?: number;
   lastResult?: LastResult;
   finished?: boolean;
+  answers?: AnswerLogEntry[];
 };
 
 export function teamXp(team: TeamStatus): number {
   return team.members.reduce((sum, member) => sum + member.xp, 0);
+}
+
+/** This run's XP plus every archived difficulty run's XP, for every member. */
+export function teamOverallXp(team: TeamStatus): number {
+  return team.members.reduce(
+    (sum, member) =>
+      sum +
+      member.xp +
+      (member.runHistory ?? []).reduce((s, run) => s + run.xp, 0),
+    0,
+  );
 }
 
 export type RankedPlayer = {
@@ -313,6 +404,7 @@ export type RankedPlayer = {
   total: number;
   finished: boolean;
   outfit: MascotOutfit | null;
+  answers: AnswerLogEntry[];
 };
 
 /**
@@ -342,6 +434,7 @@ export function roomRanking(room: Room): RankedPlayer[] {
       total: member.total,
       finished: member.finished,
       outfit: member.outfit ?? null,
+      answers: member.answers ?? [],
     }));
 }
 
@@ -412,8 +505,7 @@ export function teamFinished(team: TeamStatus): boolean {
 export function memberStatusLabel(member: TeamMember): string {
   if (member.finished) return "完了";
   if (member.total <= 0) return "待機中";
-  if (member.lastResult === "correct") return "正解";
-  if (member.lastResult === "wrong") return "不正解";
+  if (member.lastResult !== null) return "回答済み";
   return "回答中";
 }
 
@@ -498,5 +590,16 @@ export async function releaseQuestion(
 ): Promise<Room> {
   return updateRoomSettings(roomId, memberId, {
     releaseQuestion: questionIndex,
+  });
+}
+
+/** Room master only: archive this run and move every team to the next difficulty. */
+export async function advanceDifficulty(
+  roomId: string,
+  memberId: string,
+  next: Difficulty,
+): Promise<Room> {
+  return updateRoomSettings(roomId, memberId, {
+    advanceDifficulty: next,
   });
 }
