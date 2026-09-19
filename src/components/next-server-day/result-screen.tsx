@@ -9,6 +9,7 @@ import {
   allTeamsDone,
   isHost,
   lockedDifficulty,
+  teamOverallXp,
   teamXp,
   type Room,
   type TeamStatus,
@@ -55,6 +56,7 @@ export function ResultScreen({
   onRestart,
   onAdvanceDifficulty,
   onRevealResults,
+  onRevealFinalResults,
   spectator = false,
 }: {
   room: Room;
@@ -64,11 +66,12 @@ export function ResultScreen({
   total: number;
   xp: number;
   bestCombo: number;
-  /** A solo "もう一度挑戦" replay (> 0) paces its own reveal, skipping the room-wide gate below. */
+  /** A solo "もう一度挑戦" replay (> 0) paces its own reveal, skipping the room-wide gates below. */
   attempt?: number;
   onRestart: () => void;
   onAdvanceDifficulty: (next: Difficulty) => void;
   onRevealResults: () => void;
+  onRevealFinalResults: () => void;
   spectator?: boolean;
 }) {
   const ranked = [...room.teams]
@@ -83,6 +86,16 @@ export function ResultScreen({
   // lands as one shared moment instead of leaking out as each person happens
   // to finish — except a solo replay, which has no one else to sync with.
   const readyForDrumroll = allDone && (attempt > 0 || room.resultsReleased);
+  // No next difficulty to advance to — this run's own ranking (still just
+  // its own XP, unchanged) can be followed by a second, further reveal: the
+  // cumulative ranking across every difficulty played in this room.
+  const isFinalStage = upNext === null;
+  const finalRevealed =
+    isFinalStage && (attempt > 0 || room.finalResultsReleased);
+  const overallRanked = [...room.teams]
+    .filter((team) => team.members.length > 0)
+    .sort((a, b) => teamOverallXp(b) - teamOverallXp(a));
+  const overallWinner = overallRanked[0];
   const [revealed, setRevealed] = useState(false);
   const revealedRef = useRef(false);
 
@@ -154,6 +167,39 @@ export function ResultScreen({
         )
       ) : !revealed ? (
         <Drumroll onSkip={reveal} />
+      ) : finalRevealed ? (
+        <>
+          {overallWinner && (
+            <div className="event-card mt-8 rounded-2xl p-5 text-center">
+              <Trophy className="mx-auto size-10 text-accent" />
+              <p className="mt-3 text-sm font-bold text-accent">総合優勝チーム</p>
+              <p className="mt-1 text-2xl font-black">{overallWinner.name}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {teamOverallXp(overallWinner)} XP · {overallWinner.members.length}人
+              </p>
+            </div>
+          )}
+
+          <section className="event-card mt-6 rounded-2xl p-4">
+            <p className="section-en">Final</p>
+            <h2 className="mt-1 text-base font-bold">最終結果発表</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              初級・中級・上級の合計ポイントです
+            </p>
+            <ol className="mt-4 flex flex-col gap-2">
+              {overallRanked.map((team, index) => (
+                <RankRow
+                  key={team.name}
+                  team={team}
+                  index={index}
+                  isMine={Boolean(myTeam && team.name === myTeam)}
+                  room={room}
+                  xp={teamOverallXp(team)}
+                />
+              ))}
+            </ol>
+          </section>
+        </>
       ) : (
         <>
           {winner && (
@@ -183,6 +229,23 @@ export function ResultScreen({
               ))}
             </ol>
           </section>
+
+          {isFinalStage ? (
+            isHost(room, myMemberId) ? (
+              <button
+                type="button"
+                onClick={onRevealFinalResults}
+                className="event-cta mt-6 w-full rounded-full py-4 text-lg font-bold"
+              >
+                最終結果発表を見る
+              </button>
+            ) : (
+              <p className="mt-6 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                ルームマスターが最終結果発表を開始するのを待っています
+              </p>
+            )
+          ) : null}
         </>
       )}
 

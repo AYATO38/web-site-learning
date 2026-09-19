@@ -106,6 +106,7 @@ export async function createRoom(
       settingsUpdatedAt: null,
       releasedQuestion: -1,
       resultsReleased: false,
+      finalResultsReleased: false,
     });
     store.rooms.push(room);
     writeStore(store);

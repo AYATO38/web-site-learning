@@ -65,6 +65,8 @@ export type Room = {
   releasedQuestion: number;
   /** Room master has pressed 結果発表へ for this run's drumroll/ranking reveal. */
   resultsReleased: boolean;
+  /** Room master has pressed 最終結果発表を見る, after advanced's own ranking, to reveal the cumulative ranking. */
+  finalResultsReleased: boolean;
 };
 
 export const TEAM_MAX_MEMBERS = 8;
@@ -94,6 +96,8 @@ export type RoomSettingsPatch = {
   advanceDifficulty?: Difficulty;
   /** Room master starting this run's drumroll/ranking reveal for everyone at once. */
   revealResults?: boolean;
+  /** Room master starting the cumulative final-results reveal, after advanced's own ranking. */
+  revealFinalResults?: boolean;
 };
 
 export type RoomUpdate = TeamStatusUpdate & {
@@ -134,6 +138,7 @@ export function normalizeRoom(room: Room): Room {
     releasedQuestion:
       typeof room.releasedQuestion === "number" ? room.releasedQuestion : -1,
     resultsReleased: Boolean(room.resultsReleased),
+    finalResultsReleased: Boolean(room.finalResultsReleased),
   };
 }
 
@@ -250,6 +255,7 @@ function advanceRoomDifficulty(room: Room, difficulty: Difficulty) {
   // Likewise, the next run needs its own 結果発表へ press before its drumroll —
   // this run's already having been revealed must not carry over.
   room.resultsReleased = false;
+  room.finalResultsReleased = false;
   room.settingsNotice = `ルームマスターが${DIFFICULTY_LABELS[difficulty].label}に進みました`;
   room.settingsUpdatedAt = Date.now();
 }
@@ -290,6 +296,9 @@ export function applyRoomUpdate(
     }
     if (update.settings.revealResults) {
       next.resultsReleased = true;
+    }
+    if (update.settings.revealFinalResults) {
+      next.finalResultsReleased = true;
     }
     if (notices.length === 0) {
       next.updatedAt = Date.now();
@@ -392,6 +401,17 @@ export type TeamStatusUpdate = {
 
 export function teamXp(team: TeamStatus): number {
   return team.members.reduce((sum, member) => sum + member.xp, 0);
+}
+
+/** This run's XP plus every archived difficulty run's XP, for every member. */
+export function teamOverallXp(team: TeamStatus): number {
+  return team.members.reduce(
+    (sum, member) =>
+      sum +
+      member.xp +
+      (member.runHistory ?? []).reduce((s, run) => s + run.xp, 0),
+    0,
+  );
 }
 
 export type RankedPlayer = {
@@ -611,5 +631,15 @@ export async function revealResults(
 ): Promise<Room> {
   return updateRoomSettings(roomId, memberId, {
     revealResults: true,
+  });
+}
+
+/** Room master only: reveal the cumulative final ranking, after advanced's own ranking. */
+export async function revealFinalResults(
+  roomId: string,
+  memberId: string,
+): Promise<Room> {
+  return updateRoomSettings(roomId, memberId, {
+    revealFinalResults: true,
   });
 }

@@ -97,6 +97,9 @@ export async function ensureDb(): Promise<Sql> {
         ALTER TABLE rooms ADD COLUMN IF NOT EXISTS results_released BOOLEAN
       `);
       await sql.query(`
+        ALTER TABLE rooms ADD COLUMN IF NOT EXISTS final_results_released BOOLEAN
+      `);
+      await sql.query(`
         CREATE TABLE IF NOT EXISTS nsd_questions (
           id TEXT PRIMARY KEY,
           difficulty TEXT NOT NULL,

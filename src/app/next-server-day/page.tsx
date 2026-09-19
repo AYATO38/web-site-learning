@@ -53,6 +53,7 @@ import {
   pendingPlayers,
   readyToReveal,
   releaseQuestion,
+  revealFinalResults,
   revealResults,
   roomRanking,
   updateRoomSettings,
@@ -897,6 +898,15 @@ export default function NextServerDayPage() {
     }
   }
 
+  async function handleRevealFinalResults() {
+    if (!roomId || !memberId || !room || !isHost(room, memberId)) return;
+    try {
+      setRoom(await revealFinalResults(roomId, memberId));
+    } catch {
+      /* the room poll will pick up a retry on the next click */
+    }
+  }
+
   async function chooseTeam(name: string) {
     const playerName = displayName.trim();
     if (!playerName) {
@@ -1400,6 +1410,7 @@ export default function NextServerDayPage() {
             onRestart={reselectSeat}
             onAdvanceDifficulty={handleAdvanceDifficulty}
             onRevealResults={handleRevealResults}
+            onRevealFinalResults={handleRevealFinalResults}
             spectator
           />
         ) : (
@@ -1518,6 +1529,7 @@ export default function NextServerDayPage() {
           onRestart={handleRestart}
           onAdvanceDifficulty={handleAdvanceDifficulty}
           onRevealResults={handleRevealResults}
+          onRevealFinalResults={handleRevealFinalResults}
         />
       </EventShell>
     );
