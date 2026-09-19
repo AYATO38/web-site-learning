@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Minus, Plus, Trash2, X } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
+import { GalleryWatch } from "@/components/next-server-day/gallery-watch";
 import { StandingsReveal } from "@/components/next-server-day/standings-reveal";
 import { WaitingBanner } from "@/components/next-server-day/waiting-banner";
 import { InviteShare } from "@/components/next-server-day/invite-share";
@@ -52,6 +53,7 @@ import {
   pendingPlayers,
   readyToReveal,
   releaseQuestion,
+  revealResults,
   roomRanking,
   updateRoomSettings,
   updateTeamStatus,
@@ -230,6 +232,33 @@ export default function NextServerDayPage() {
     if (total === 0) return 0;
     return finished ? 100 : (current / total) * 100;
   }, [current, total, finished]);
+
+  // What a gallery spectator watches: the room's shared question, derived
+  // from the least-advanced still-active member (everyone else is either
+  // there too or already waiting on them) — not this browser's own
+  // `selectedDifficulty`/`current`, which a spectator never sets.
+  const galleryDifficulty = room ? lockedDifficulty(room) : null;
+  const galleryQuestions = useMemo(
+    () =>
+      galleryDifficulty
+        ? questions.filter((q) => q.difficulty === galleryDifficulty)
+        : [],
+    [galleryDifficulty, questions],
+  );
+  const galleryFocusIndex = useMemo(() => {
+    if (!room) return null;
+    const active = room.teams
+      .flatMap((team) => team.members)
+      .filter((member) => member.total > 0 && !member.finished);
+    if (active.length === 0) return null;
+    return Math.min(...active.map((member) => member.current));
+  }, [room]);
+  const galleryQuestion =
+    galleryFocusIndex !== null ? galleryQuestions[galleryFocusIndex] : undefined;
+  const galleryAllAnswered =
+    room && memberId && galleryFocusIndex !== null
+      ? readyToReveal(room, memberId, galleryFocusIndex)
+      : false;
 
   useEffect(() => {
     setPresets(loadPresets());
@@ -859,6 +888,15 @@ export default function NextServerDayPage() {
     }
   }
 
+  async function handleRevealResults() {
+    if (!roomId || !memberId || !room || !isHost(room, memberId)) return;
+    try {
+      setRoom(await revealResults(roomId, memberId));
+    } catch {
+      /* the room poll will pick up a retry on the next click */
+    }
+  }
+
   async function chooseTeam(name: string) {
     const playerName = displayName.trim();
     if (!playerName) {
@@ -1361,6 +1399,7 @@ export default function NextServerDayPage() {
             bestCombo={0}
             onRestart={reselectSeat}
             onAdvanceDifficulty={handleAdvanceDifficulty}
+            onRevealResults={handleRevealResults}
             spectator
           />
         ) : (
@@ -1397,6 +1436,16 @@ export default function NextServerDayPage() {
                   disabled={busy}
                   onPick={(key) => void startAllWithDifficulty(key)}
                   questions={questions}
+                />
+              </div>
+            ) : null}
+            {galleryQuestion ? (
+              <div className="mb-6">
+                <GalleryWatch
+                  question={galleryQuestion}
+                  questionNumber={(galleryFocusIndex ?? 0) + 1}
+                  total={galleryQuestions.length}
+                  allAnswered={galleryAllAnswered}
                 />
               </div>
             ) : null}
@@ -1465,8 +1514,10 @@ export default function NextServerDayPage() {
           total={total}
           xp={xp}
           bestCombo={bestCombo}
+          attempt={attempt}
           onRestart={handleRestart}
           onAdvanceDifficulty={handleAdvanceDifficulty}
+          onRevealResults={handleRevealResults}
         />
       </EventShell>
     );

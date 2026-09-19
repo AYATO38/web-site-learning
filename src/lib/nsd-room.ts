@@ -63,6 +63,8 @@ export type Room = {
   settingsUpdatedAt: number | null;
   /** Highest question index (0-based) the room master has released past standings. */
   releasedQuestion: number;
+  /** Room master has pressed 結果発表へ for this run's drumroll/ranking reveal. */
+  resultsReleased: boolean;
 };
 
 export const TEAM_MAX_MEMBERS = 8;
@@ -90,6 +92,8 @@ export type RoomSettingsPatch = {
   releaseQuestion?: number;
   /** Room master advancing every team to the next difficulty in this same room. */
   advanceDifficulty?: Difficulty;
+  /** Room master starting this run's drumroll/ranking reveal for everyone at once. */
+  revealResults?: boolean;
 };
 
 export type RoomUpdate = TeamStatusUpdate & {
@@ -129,6 +133,7 @@ export function normalizeRoom(room: Room): Room {
       typeof room.settingsUpdatedAt === "number" ? room.settingsUpdatedAt : null,
     releasedQuestion:
       typeof room.releasedQuestion === "number" ? room.releasedQuestion : -1,
+    resultsReleased: Boolean(room.resultsReleased),
   };
 }
 
@@ -242,6 +247,9 @@ function advanceRoomDifficulty(room: Room, difficulty: Difficulty) {
   // question — otherwise everyone's first standings screen there would
   // auto-skip instantly, as if the master had already released it.
   room.releasedQuestion = -1;
+  // Likewise, the next run needs its own 結果発表へ press before its drumroll —
+  // this run's already having been revealed must not carry over.
+  room.resultsReleased = false;
   room.settingsNotice = `ルームマスターが${DIFFICULTY_LABELS[difficulty].label}に進みました`;
   room.settingsUpdatedAt = Date.now();
 }
@@ -279,6 +287,9 @@ export function applyRoomUpdate(
         next.releasedQuestion,
         update.settings.releaseQuestion,
       );
+    }
+    if (update.settings.revealResults) {
+      next.resultsReleased = true;
     }
     if (notices.length === 0) {
       next.updatedAt = Date.now();
@@ -590,5 +601,15 @@ export async function advanceDifficulty(
 ): Promise<Room> {
   return updateRoomSettings(roomId, memberId, {
     advanceDifficulty: next,
+  });
+}
+
+/** Room master only: start this run's drumroll/ranking reveal for everyone at once. */
+export async function revealResults(
+  roomId: string,
+  memberId: string,
+): Promise<Room> {
+  return updateRoomSettings(roomId, memberId, {
+    revealResults: true,
   });
 }

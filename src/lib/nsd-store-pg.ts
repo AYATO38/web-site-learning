@@ -26,6 +26,7 @@ type RoomRow = {
   settings_notice?: string | null;
   settings_updated_at?: string | number | null;
   released_question?: number | null;
+  results_released?: boolean | null;
 };
 
 function parseJsonArray<T>(value: T[] | string | null | undefined): T[] {
@@ -54,6 +55,7 @@ function rowToRoom(row: RoomRow): Room {
       : null,
     releasedQuestion:
       typeof row.released_question === "number" ? row.released_question : -1,
+    resultsReleased: Boolean(row.results_released),
   });
 }
 
@@ -87,7 +89,7 @@ export async function getRoom(id: string): Promise<Room | undefined> {
   const rows = (await sql`
     SELECT id, teams, updated_at,
            host_member_id, host_name, gallery_capacity, gallery,
-           settings_notice, settings_updated_at, released_question
+           settings_notice, settings_updated_at, released_question, results_released
     FROM rooms WHERE id = ${code} LIMIT 1
   `) as RoomRow[];
   return rows[0] ? rowToRoom(rows[0]) : undefined;
@@ -115,13 +117,14 @@ export async function createRoom(
       settingsNotice: null,
       settingsUpdatedAt: null,
       releasedQuestion: -1,
+      resultsReleased: false,
     });
     try {
       await sql`
         INSERT INTO rooms (
           id, teams, updated_at,
           host_member_id, host_name, gallery_capacity, gallery,
-          settings_notice, settings_updated_at, released_question
+          settings_notice, settings_updated_at, released_question, results_released
         )
         VALUES (
           ${room.id},
@@ -133,7 +136,8 @@ export async function createRoom(
           ${JSON.stringify(room.gallery)}::jsonb,
           ${room.settingsNotice},
           ${room.settingsUpdatedAt},
-          ${room.releasedQuestion}
+          ${room.releasedQuestion},
+          ${room.resultsReleased}
         )
       `;
       return room;
@@ -178,11 +182,12 @@ export async function patchTeam(
         gallery = ${JSON.stringify(next.gallery)}::jsonb,
         settings_notice = ${next.settingsNotice},
         settings_updated_at = ${next.settingsUpdatedAt},
-        released_question = ${next.releasedQuestion}
+        released_question = ${next.releasedQuestion},
+        results_released = ${next.resultsReleased}
       WHERE id = ${room.id} AND updated_at = ${room.updatedAt}
       RETURNING id, teams, updated_at,
                 host_member_id, host_name, gallery_capacity, gallery,
-                settings_notice, settings_updated_at, released_question
+                settings_notice, settings_updated_at, released_question, results_released
     `) as RoomRow[];
 
     if (rows[0]) return rowToRoom(rows[0]);

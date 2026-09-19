@@ -33,7 +33,7 @@ function rankAccent(index: number) {
   if (index === 0) return "from-[#f6e3a3]/60 to-transparent ring-[#d4af37]";
   if (index === 1) return "from-[#e4e6ea]/60 to-transparent ring-[#b0b4bd]";
   if (index === 2) return "from-[#e9c9a0]/55 to-transparent ring-[#c98a4b]";
-  return "from-transparent to-transparent ring-transparent";
+  return "from-white to-white ring-border";
 }
 
 function rankIconColor(index: number) {
@@ -51,8 +51,10 @@ export function ResultScreen({
   total,
   xp,
   bestCombo,
+  attempt = 0,
   onRestart,
   onAdvanceDifficulty,
+  onRevealResults,
   spectator = false,
 }: {
   room: Room;
@@ -62,8 +64,11 @@ export function ResultScreen({
   total: number;
   xp: number;
   bestCombo: number;
+  /** A solo "もう一度挑戦" replay (> 0) paces its own reveal, skipping the room-wide gate below. */
+  attempt?: number;
   onRestart: () => void;
   onAdvanceDifficulty: (next: Difficulty) => void;
+  onRevealResults: () => void;
   spectator?: boolean;
 }) {
   const ranked = [...room.teams]
@@ -73,6 +78,11 @@ export function ResultScreen({
   const allDone = allTeamsDone(room);
   const winner = ranked[0];
   const upNext = nextDifficulty(lockedDifficulty(room) ?? "advanced");
+  // Everyone (including the room master's own screen) waits for the room
+  // master to press 結果発表へ before the drumroll starts, so the reveal
+  // lands as one shared moment instead of leaking out as each person happens
+  // to finish — except a solo replay, which has no one else to sync with.
+  const readyForDrumroll = allDone && (attempt > 0 || room.resultsReleased);
   const [revealed, setRevealed] = useState(false);
   const revealedRef = useRef(false);
 
@@ -85,7 +95,7 @@ export function ResultScreen({
   }
 
   useEffect(() => {
-    if (!allDone) {
+    if (!readyForDrumroll) {
       revealedRef.current = false;
       setRevealed(false);
       stopDrumrollSfx();
@@ -106,7 +116,7 @@ export function ResultScreen({
       window.clearTimeout(timer);
       stopDrumrollSfx();
     };
-  }, [allDone]);
+  }, [readyForDrumroll]);
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-5 py-10">
@@ -116,14 +126,35 @@ export function ResultScreen({
       <p className="mt-2 text-center text-sm text-muted-foreground">
         {!allDone
           ? "他のメンバーの完了を待っています"
-          : revealed
-            ? "全チームの結果が出そろいました"
-            : "まもなく発表します"}
+          : !readyForDrumroll
+            ? "ルームマスターの結果発表をお待ちください"
+            : revealed
+              ? "全チームの結果が出そろいました"
+              : "まもなく発表します"}
       </p>
 
-      {allDone && !revealed ? (
+      {!allDone ? (
+        <div className="mt-8">
+          <LiveBoard room={room} myTeam={myTeam} myMemberId={myMemberId} />
+        </div>
+      ) : !readyForDrumroll ? (
+        isHost(room, myMemberId) ? (
+          <button
+            type="button"
+            onClick={onRevealResults}
+            className="event-cta mt-8 w-full rounded-full py-4 text-lg font-bold"
+          >
+            結果発表へ
+          </button>
+        ) : (
+          <p className="mt-8 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            ルームマスターが結果発表を開始するのを待っています
+          </p>
+        )
+      ) : !revealed ? (
         <Drumroll onSkip={reveal} />
-      ) : allDone ? (
+      ) : (
         <>
           {winner && (
             <div className="event-card mt-8 rounded-2xl p-5 text-center">
@@ -153,13 +184,9 @@ export function ResultScreen({
             </ol>
           </section>
         </>
-      ) : (
-        <div className="mt-8">
-          <LiveBoard room={room} myTeam={myTeam} myMemberId={myMemberId} />
-        </div>
       )}
 
-      {revealed || !allDone ? (
+      {revealed || !readyForDrumroll ? (
         <>
           <section className="event-card mt-4 rounded-2xl p-5">
             <p className="section-en">{spectator ? "Gallery" : myTeam}</p>
