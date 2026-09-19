@@ -1502,7 +1502,8 @@ export default function NextServerDayPage() {
                       : null,
                   solution: question.kind === "bugfix" ? question.solution : null,
                   yourCode:
-                    question.kind === "code" && draft.kind === "text"
+                    (question.kind === "bugfix" || question.kind === "code") &&
+                    draft.kind === "text"
                       ? draft.value
                       : null,
                   codeExample: question.kind === "code" ? question.example : null,

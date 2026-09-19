@@ -46,7 +46,7 @@ export type StandingsRecap = {
   codeDiff?: DiffLine[] | null;
   /** Bugfix questions: the clean full solution, shown alongside the diff. */
   solution?: string | null;
-  /** Code questions: the player's own submitted code. */
+  /** Bugfix/code questions: the player's own submitted code, as a plain box. */
   yourCode?: string | null;
   /** Code questions: the worked example, shown as reference regardless of correct/wrong. */
   codeExample?: string | null;
