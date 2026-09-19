@@ -350,6 +350,39 @@ function TeamRosterModal({
   );
 }
 
+function AnswerBox({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "neutral" | "accent";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-3 py-2.5",
+        tone === "accent"
+          ? "border-accent/30 bg-accent-soft"
+          : "border-border bg-surface-elevated",
+      )}
+    >
+      <p
+        className={cn(
+          "text-xs font-extrabold",
+          tone === "accent" ? "text-accent" : "text-muted-foreground",
+        )}
+      >
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function RecapCard({ recap }: { recap: StandingsRecap }) {
   const correct = recap.result === "correct";
   return (
@@ -382,18 +415,12 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
           </p>
         ) : null}
         {recap.yourAnswer != null || recap.correctAnswer != null ? (
-          <div className="mt-2 flex flex-col gap-1 text-sm font-semibold leading-relaxed text-foreground">
+          <div className="mt-2 flex flex-col gap-2">
             {recap.yourAnswer != null ? (
-              <p>
-                <span className="font-extrabold">あなたの回答: </span>
-                {recap.yourAnswer}
-              </p>
+              <AnswerBox label="あなたの回答" tone="neutral" value={recap.yourAnswer} />
             ) : null}
             {recap.correctAnswer != null ? (
-              <p>
-                <span className="font-extrabold">正解: </span>
-                {recap.correctAnswer}
-              </p>
+              <AnswerBox label="正解" tone="accent" value={recap.correctAnswer} />
             ) : null}
           </div>
         ) : null}
@@ -403,7 +430,7 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
         </p>
         {recap.codeDiff ? (
           <>
-            <p className="mt-2 text-xs font-extrabold">
+            <p className="mt-2 text-xs font-extrabold text-muted-foreground">
               あなたのコード（
               <span className="text-wrong">赤=直っていない</span>
               ・
@@ -413,21 +440,21 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
             <CodeDiffView diff={recap.codeDiff} />
           </>
         ) : null}
-        {recap.solution ? (
-          <>
-            <p className="mt-2 text-xs font-extrabold">模範解答</p>
-            <CodeExampleView code={recap.solution} />
-          </>
-        ) : null}
         {recap.yourCode ? (
           <>
-            <p className="mt-2 text-xs font-extrabold">あなたの回答</p>
+            <p className="mt-2 text-xs font-extrabold text-muted-foreground">あなたの回答</p>
             <CodeExampleView code={recap.yourCode} />
+          </>
+        ) : null}
+        {recap.solution ? (
+          <>
+            <p className="mt-2 text-xs font-extrabold text-accent">模範解答</p>
+            <CodeExampleView code={recap.solution} />
           </>
         ) : null}
         {recap.codeExample ? (
           <>
-            <p className="mt-2 text-xs font-extrabold">解答例</p>
+            <p className="mt-2 text-xs font-extrabold text-accent">解答例</p>
             <CodeExampleView code={recap.codeExample} />
           </>
         ) : null}
