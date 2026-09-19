@@ -489,7 +489,7 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
             <CodeDiffView diff={recap.codeDiff} />
           </>
         ) : null}
-        {recap.yourCode ? (
+        {recap.yourCode && !recap.codeDiff ? (
           <>
             <p className="mt-2 text-xs font-extrabold text-muted-foreground">あなたの回答</p>
             <CodeExampleView code={recap.yourCode} />

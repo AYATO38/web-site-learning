@@ -24,7 +24,7 @@ export function CodeDiffView({ diff }: { diff: DiffLine[] }) {
             )}
           >
             {line.type === "missing"
-              ? `${line.text || "（この行）"} ← 足りません`
+              ? `${line.text || "（この行）"} ← 違います`
               : line.text || " "}
           </div>
         ))}
