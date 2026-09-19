@@ -9,7 +9,6 @@ import {
   allTeamsDone,
   isHost,
   lockedDifficulty,
-  teamOverallXp,
   teamXp,
   type Room,
   type TeamStatus,
@@ -31,10 +30,17 @@ function rankLabel(index: number) {
 }
 
 function rankAccent(index: number) {
-  if (index === 0) return "from-[#c9a39a]/30 to-transparent ring-[#c9a39a]/50";
-  if (index === 1) return "from-foreground/5 to-transparent ring-border";
-  if (index === 2) return "from-[#d4c4b0]/50 to-transparent ring-[#d4c4b0]";
+  if (index === 0) return "from-[#f6e3a3]/60 to-transparent ring-[#d4af37]";
+  if (index === 1) return "from-[#e4e6ea]/60 to-transparent ring-[#b0b4bd]";
+  if (index === 2) return "from-[#e9c9a0]/55 to-transparent ring-[#c98a4b]";
   return "from-transparent to-transparent ring-transparent";
+}
+
+function rankIconColor(index: number) {
+  if (index === 0) return "text-[#b8860b]";
+  if (index === 1) return "text-[#8a8f99]";
+  if (index === 2) return "text-[#a5652e]";
+  return "text-muted-foreground";
 }
 
 export function ResultScreen({
@@ -63,9 +69,6 @@ export function ResultScreen({
   const ranked = [...room.teams]
     .filter((team) => team.members.length > 0)
     .sort((a, b) => teamXp(b) - teamXp(a));
-  const overallRanked = [...room.teams]
-    .filter((team) => team.members.length > 0)
-    .sort((a, b) => teamOverallXp(b) - teamOverallXp(a));
   const myRank = ranked.findIndex((t) => t.name === myTeam);
   const allDone = allTeamsDone(room);
   const winner = ranked[0];
@@ -149,28 +152,6 @@ export function ResultScreen({
               ))}
             </ol>
           </section>
-
-          {!upNext ? (
-            <section className="event-card mt-6 rounded-2xl p-4">
-              <p className="section-en">Overall</p>
-              <h2 className="mt-1 text-base font-bold">総合順位</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                これまでに挑戦した難易度の合計ポイントです
-              </p>
-              <ol className="mt-4 flex flex-col gap-2">
-                {overallRanked.map((team, index) => (
-                  <RankRow
-                    key={team.name}
-                    team={team}
-                    index={index}
-                    isMine={Boolean(myTeam && team.name === myTeam)}
-                    room={room}
-                    xp={teamOverallXp(team)}
-                  />
-                ))}
-              </ol>
-            </section>
-          ) : null}
         </>
       ) : (
         <div className="mt-8">
@@ -309,7 +290,11 @@ function RankRow({
     >
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background text-sm font-black">
-          {index < 3 ? <Medal className="size-4 text-accent" /> : index + 1}
+          {index < 3 ? (
+            <Medal className={cn("size-4", rankIconColor(index))} />
+          ) : (
+            index + 1
+          )}
         </span>
         <div className="min-w-0">
           <p className="truncate font-bold">

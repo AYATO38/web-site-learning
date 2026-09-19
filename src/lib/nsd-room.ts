@@ -383,17 +383,6 @@ export function teamXp(team: TeamStatus): number {
   return team.members.reduce((sum, member) => sum + member.xp, 0);
 }
 
-/** This run's XP plus every archived difficulty run's XP, for every member. */
-export function teamOverallXp(team: TeamStatus): number {
-  return team.members.reduce(
-    (sum, member) =>
-      sum +
-      member.xp +
-      (member.runHistory ?? []).reduce((s, run) => s + run.xp, 0),
-    0,
-  );
-}
-
 export type RankedPlayer = {
   id: string;
   name: string;
