@@ -16,9 +16,13 @@ import {
 } from "@/lib/nsd-room";
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
+import { PodiumCelebration } from "@/components/next-server-day/podium-celebration";
 import {
   DRUMROLL_MS,
+  GRAND_DRUMROLL_MS,
   playDrumrollSfx,
+  playFanfareSfx,
+  playGrandDrumrollSfx,
   playResultSfx,
   stopDrumrollSfx,
 } from "@/lib/sfx";
@@ -88,9 +92,10 @@ export function ResultScreen({
   const readyForDrumroll = allDone && (attempt > 0 || room.resultsReleased);
   // No next difficulty to advance to — this run's own ranking (still just
   // its own XP, unchanged) can be followed by a second, further reveal: the
-  // cumulative ranking across every difficulty played in this room.
+  // cumulative ranking across every difficulty played in this room, behind
+  // its own room-master gate and its own (grander) drumroll.
   const isFinalStage = upNext === null;
-  const finalRevealed =
+  const finalGateOpen =
     isFinalStage && (attempt > 0 || room.finalResultsReleased);
   const overallRanked = [...room.teams]
     .filter((team) => team.members.length > 0)
@@ -131,6 +136,41 @@ export function ResultScreen({
     };
   }, [readyForDrumroll]);
 
+  const [finalDrumrollDone, setFinalDrumrollDone] = useState(false);
+  const finalDrumrollRef = useRef(false);
+
+  function revealFinal() {
+    if (finalDrumrollRef.current) return;
+    finalDrumrollRef.current = true;
+    stopDrumrollSfx();
+    setFinalDrumrollDone(true);
+    void playFanfareSfx();
+  }
+
+  useEffect(() => {
+    if (!finalGateOpen) {
+      finalDrumrollRef.current = false;
+      setFinalDrumrollDone(false);
+      stopDrumrollSfx();
+      return;
+    }
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduceMotion) {
+      revealFinal();
+      return;
+    }
+
+    void playGrandDrumrollSfx();
+    const timer = window.setTimeout(revealFinal, GRAND_DRUMROLL_MS);
+    return () => {
+      window.clearTimeout(timer);
+      stopDrumrollSfx();
+    };
+  }, [finalGateOpen]);
+
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-5 py-10">
       <p className="section-en text-center">Result</p>
@@ -141,9 +181,11 @@ export function ResultScreen({
           ? "他のメンバーの完了を待っています"
           : !readyForDrumroll
             ? "ルームマスターの結果発表をお待ちください"
-            : revealed
-              ? "全チームの結果が出そろいました"
-              : "まもなく発表します"}
+            : !revealed
+              ? "まもなく発表します"
+              : finalGateOpen && !finalDrumrollDone
+                ? "まもなく最終結果を発表します"
+                : "全チームの結果が出そろいました"}
       </p>
 
       {!allDone ? (
@@ -167,18 +209,11 @@ export function ResultScreen({
         )
       ) : !revealed ? (
         <Drumroll onSkip={reveal} />
-      ) : finalRevealed ? (
+      ) : finalGateOpen && !finalDrumrollDone ? (
+        <Drumroll onSkip={revealFinal} grand />
+      ) : finalGateOpen ? (
         <>
-          {overallWinner && (
-            <div className="event-card mt-8 rounded-2xl p-5 text-center">
-              <Trophy className="mx-auto size-10 text-accent" />
-              <p className="mt-3 text-sm font-bold text-accent">総合優勝チーム</p>
-              <p className="mt-1 text-2xl font-black">{overallWinner.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {teamOverallXp(overallWinner)} XP · {overallWinner.members.length}人
-              </p>
-            </div>
-          )}
+          {overallWinner && <PodiumCelebration team={overallWinner} />}
 
           <section className="event-card mt-6 rounded-2xl p-4">
             <p className="section-en">Final</p>
@@ -320,22 +355,50 @@ export function ResultScreen({
   );
 }
 
-function Drumroll({ onSkip }: { onSkip: () => void }) {
+function Drumroll({
+  onSkip,
+  grand = false,
+}: {
+  onSkip: () => void;
+  /** The final-results drumroll: bigger card, more bars, longer roll. */
+  grand?: boolean;
+}) {
+  const bars = grand ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4];
   return (
-    <div className="event-card mt-8 overflow-hidden rounded-2xl p-8 text-center">
-      <p className="section-en">Drumroll</p>
-      <p className="mt-2 text-lg font-black tracking-tight">ドラムロール…</p>
-      <div className="mt-6 flex h-16 items-end justify-center gap-2">
-        {[0, 1, 2, 3, 4].map((index) => (
+    <div
+      className={cn(
+        "event-card mt-8 overflow-hidden rounded-2xl text-center",
+        grand ? "p-10" : "p-8",
+      )}
+    >
+      <p className="section-en">{grand ? "Final Drumroll" : "Drumroll"}</p>
+      <p
+        className={cn(
+          "mt-2 font-black tracking-tight",
+          grand ? "text-2xl" : "text-lg",
+        )}
+      >
+        ドラムロール…
+      </p>
+      <div
+        className={cn(
+          "flex items-end justify-center gap-2",
+          grand ? "mt-8 h-24" : "mt-6 h-16",
+        )}
+      >
+        {bars.map((index) => (
           <span
             key={index}
-            className="drum-bar w-2.5 rounded-full bg-accent"
+            className={cn(
+              "rounded-full bg-accent",
+              grand ? "drum-bar-grand w-3.5" : "drum-bar w-2.5",
+            )}
             style={{ animationDelay: `${index * 80}ms` }}
           />
         ))}
       </div>
       <p className="mt-5 text-sm font-semibold text-muted-foreground">
-        優勝チームを発表します
+        {grand ? "最終結果を発表します" : "優勝チームを発表します"}
       </p>
       <button
         type="button"

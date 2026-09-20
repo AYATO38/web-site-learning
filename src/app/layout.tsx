@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/home/bottom-nav";
@@ -24,6 +24,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "POSSE Learning",
   description: "大学生向けプログラミング学習アプリ",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

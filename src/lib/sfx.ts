@@ -98,6 +98,7 @@ export async function playResultSfx() {
 }
 
 export const DRUMROLL_MS = 2600;
+export const GRAND_DRUMROLL_MS = 4200;
 
 export function stopDrumrollSfx() {
   for (const stop of drumrollStops) stop();
@@ -123,4 +124,41 @@ export async function playDrumrollSfx() {
   tone(ctx, 392, now + t, 0.28, 0.08);
   tone(ctx, 523.25, now + t + 0.04, 0.4, 0.1);
   tone(ctx, 783.99, now + t + 0.08, 0.45, 0.09);
+}
+
+/** A longer, louder roll for the final-results reveal — same shape as playDrumrollSfx, stretched out with a bigger finishing chord. */
+export async function playGrandDrumrollSfx() {
+  const ctx = getContext();
+  if (!ctx) return;
+  await ctx.resume();
+  stopDrumrollSfx();
+  const now = ctx.currentTime;
+
+  let t = 0;
+  let interval = 0.16;
+  while (t < 3.6) {
+    snare(ctx, now + t, 0.08, 0.06 + t * 0.022);
+    t += interval;
+    interval = Math.max(0.036, interval * 0.93);
+  }
+
+  snare(ctx, now + t, 0.7, 0.22);
+  tone(ctx, 261.63, now + t, 0.4, 0.09);
+  tone(ctx, 392, now + t + 0.05, 0.5, 0.1);
+  tone(ctx, 523.25, now + t + 0.1, 0.55, 0.1);
+  tone(ctx, 659.25, now + t + 0.15, 0.6, 0.11);
+}
+
+/** A bigger fanfare than playResultSfx, for the podium celebration after the final drumroll. */
+export async function playFanfareSfx() {
+  const ctx = getContext();
+  if (!ctx) return;
+  await ctx.resume();
+  const now = ctx.currentTime;
+  const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+  notes.forEach((freq, i) => tone(ctx, freq, now + i * 0.11, 0.22, 0.11));
+  const chordStart = now + notes.length * 0.11 + 0.05;
+  tone(ctx, 1046.5, chordStart, 0.6, 0.13);
+  tone(ctx, 1318.5, chordStart + 0.05, 0.65, 0.12);
+  tone(ctx, 1568, chordStart + 0.1, 0.7, 0.1);
 }
