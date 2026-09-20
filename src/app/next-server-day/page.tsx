@@ -194,6 +194,7 @@ export default function NextServerDayPage() {
   >(null);
   const [answers, setAnswers] = useState<AnswerLogEntry[]>([]);
   const standingsPrevRanks = useRef<Map<string, number> | null>(null);
+  const galleryPrevRanks = useRef<Map<string, number> | null>(null);
   const nameTouchedRef = useRef(false);
   // Mirrors `memberId` outside of React's render/closure cycle: an async
   // callback captured by an early render (e.g. the mount effect's own
@@ -261,6 +262,12 @@ export default function NextServerDayPage() {
     room && memberId && galleryFocusIndex !== null
       ? readyToReveal(room, memberId, galleryFocusIndex)
       : false;
+  const galleryPending =
+    room && memberId && galleryFocusIndex !== null
+      ? pendingPlayers(room, memberId, galleryFocusIndex).filter(
+          (player) => !player.away,
+        )
+      : [];
 
   useEffect(() => {
     setPresets(loadPresets());
@@ -635,6 +642,24 @@ export default function NextServerDayPage() {
       });
     }
     handleContinueFromStandings();
+  }
+
+  /**
+   * The room master, watching from the gallery instead of playing, still
+   * needs to be able to move everyone past standings — this releases the
+   * same room-wide signal `handleMasterAdvance` does, just driven by the
+   * room's own shared progress (galleryFocusIndex) instead of a personal
+   * `current`, since a spectator has no run of their own.
+   */
+  function handleGalleryMasterAdvance() {
+    if (!roomId || !memberId || !room || galleryFocusIndex === null) return;
+    if (!isHost(room, memberId)) return;
+    galleryPrevRanks.current = new Map(
+      roomRanking(room).map((player, index) => [player.id, index]),
+    );
+    void releaseQuestion(roomId, memberId, galleryFocusIndex).catch(() => {
+      /* the room poll will pick up a retry on the next click */
+    });
   }
 
   function handleContinue() {
@@ -1406,9 +1431,9 @@ export default function NextServerDayPage() {
   }
 
   if (inGallery) {
-    return (
-      <EventShell>
-        {allTeamsDone(room) ? (
+    if (allTeamsDone(room)) {
+      return (
+        <EventShell>
           <ResultScreen
             room={room}
             myTeam={null}
@@ -1424,56 +1449,82 @@ export default function NextServerDayPage() {
             onAdvanceFinalRankStep={handleAdvanceFinalRankStep}
             spectator
           />
-        ) : (
-          <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
-            <EventHero
-              backHref="/"
-              kicker={`Room ${roomId}`}
-              title="ギャラリー観戦"
-              subtitle={
-                room.host
-                  ? `ルームマスター: ${room.host.name} · 会場の進行を見ています`
-                  : "会場の進行を見ています"
-              }
-            />
-            <button
-              type="button"
-              onClick={reselectSeat}
-              className="mb-6 -mt-3 text-xs font-semibold text-muted-foreground underline-offset-2 hover:underline"
-            >
-              席を選び直す
-            </button>
-            <RoomSettingsPanel
-              room={room}
-              memberId={memberId}
-              onUpdated={setRoom}
-            />
-            {isHost(room, memberId) && !lockedDifficulty(room) ? (
-              <div className="mb-6">
-                {error ? (
-                  <p className="mb-3 text-sm font-semibold text-wrong">{error}</p>
-                ) : null}
-                <DifficultyStartGrid
-                  host
-                  disabled={busy}
-                  onPick={(key) => void startAllWithDifficulty(key)}
-                  questions={questions}
-                />
-              </div>
-            ) : null}
-            {galleryQuestion ? (
-              <div className="mb-6">
-                <GalleryWatch
-                  question={galleryQuestion}
-                  questionNumber={(galleryFocusIndex ?? 0) + 1}
-                  total={galleryQuestions.length}
-                  allAnswered={galleryAllAnswered}
-                />
-              </div>
-            ) : null}
-            <LiveBoard room={room} myTeam={null} myMemberId={memberId} />
-          </div>
-        )}
+        </EventShell>
+      );
+    }
+
+    // Once everyone active has answered, the gallery gets the exact same
+    // standings screen the players do — including a working advance button
+    // for the room master, who might well be watching from here instead of
+    // playing.
+    if (galleryQuestion && galleryAllAnswered) {
+      return (
+        <EventShell reserveNav={false}>
+          <StandingsReveal
+            snapshot={roomRanking(room)}
+            previousRanks={galleryPrevRanks.current}
+            myMemberId={memberId}
+            questionNumber={(galleryFocusIndex ?? 0) + 1}
+            total={galleryQuestions.length}
+            isLast={(galleryFocusIndex ?? 0) + 1 >= galleryQuestions.length}
+            canAdvance={isHost(room, memberId)}
+            onAdvance={handleGalleryMasterAdvance}
+            recap={null}
+          />
+        </EventShell>
+      );
+    }
+
+    return (
+      <EventShell>
+        <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-4 pb-8 pt-8">
+          <EventHero
+            backHref="/"
+            kicker={`Room ${roomId}`}
+            title="ギャラリー観戦"
+            subtitle={
+              room.host
+                ? `ルームマスター: ${room.host.name} · 会場の進行を見ています`
+                : "会場の進行を見ています"
+            }
+          />
+          <button
+            type="button"
+            onClick={reselectSeat}
+            className="mb-6 -mt-3 text-xs font-semibold text-muted-foreground underline-offset-2 hover:underline"
+          >
+            席を選び直す
+          </button>
+          <RoomSettingsPanel
+            room={room}
+            memberId={memberId}
+            onUpdated={setRoom}
+          />
+          {isHost(room, memberId) && !lockedDifficulty(room) ? (
+            <div className="mb-6">
+              {error ? (
+                <p className="mb-3 text-sm font-semibold text-wrong">{error}</p>
+              ) : null}
+              <DifficultyStartGrid
+                host
+                disabled={busy}
+                onPick={(key) => void startAllWithDifficulty(key)}
+                questions={questions}
+              />
+            </div>
+          ) : null}
+          {galleryQuestion ? (
+            <div className="mb-6">
+              <GalleryWatch
+                question={galleryQuestion}
+                questionNumber={(galleryFocusIndex ?? 0) + 1}
+                total={galleryQuestions.length}
+                pending={galleryPending}
+              />
+            </div>
+          ) : null}
+          <LiveBoard room={room} myTeam={null} myMemberId={memberId} />
+        </div>
       </EventShell>
     );
   }
