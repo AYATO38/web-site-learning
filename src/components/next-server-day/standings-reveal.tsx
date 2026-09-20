@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Loader2,
   Minus,
+  Sparkles,
   Trophy,
   X,
 } from "lucide-react";
@@ -27,7 +28,8 @@ const FLIP_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const REORDER_DELAY_MS = 1100;
 
 export type StandingsRecap = {
-  result: "correct" | "wrong";
+  /** "info": no personal answer to judge (a gallery spectator watching) — neutral styling, no correct/wrong icon or XP. */
+  result: "correct" | "wrong" | "info";
   title: string;
   /** So the question stays visible on this screen, not just during "answering". */
   prompt: string;
@@ -181,6 +183,10 @@ export function StandingsReveal({
           const isNew = previousRanks != null && previous == null;
           const delta = previous == null ? null : previous - index;
           const isMine = player.id === myMemberId;
+          // The just-revealed question's own result, if this player answered
+          // it — someone who went quiet and got skipped past (see
+          // pendingPlayers' `away`) has no entry here yet, so no icon shows.
+          const lastAnswer = player.answers[questionNumber - 1];
           const revealOrder = reordering
             ? 0
             : Math.min(lastIndex - renderIndex, STAGGER_CAP);
@@ -224,6 +230,23 @@ export function StandingsReveal({
                   {player.combo >= 2 ? ` · ${player.combo}連続` : ""}
                 </button>
               </div>
+              {lastAnswer ? (
+                <span
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full",
+                    lastAnswer.correct
+                      ? "bg-correct-surface text-accent"
+                      : "bg-wrong-surface text-wrong",
+                  )}
+                  aria-label={lastAnswer.correct ? "正解" : "不正解"}
+                >
+                  {lastAnswer.correct ? (
+                    <Check className="size-3.5" strokeWidth={3} />
+                  ) : (
+                    <X className="size-3.5" strokeWidth={3} />
+                  )}
+                </span>
+              ) : null}
               <DeltaBadge delta={delta} isNew={isNew} />
               <span className="w-14 shrink-0 text-right text-sm font-black tabular-nums">
                 {player.xp}
@@ -419,22 +442,31 @@ function FilledTemplateText({ fill }: { fill: TemplateFill }) {
 
 function RecapCard({ recap }: { recap: StandingsRecap }) {
   const correct = recap.result === "correct";
+  const info = recap.result === "info";
   return (
     <div
       className={cn(
         "mt-6 flex items-start gap-3 rounded-2xl border px-4 py-3.5",
-        correct
-          ? "border-correct/30 bg-correct-surface text-accent"
-          : "border-wrong/30 bg-wrong-surface text-wrong",
+        info
+          ? "border-border bg-surface-elevated text-foreground"
+          : correct
+            ? "border-correct/30 bg-correct-surface text-accent"
+            : "border-wrong/30 bg-wrong-surface text-wrong",
       )}
     >
       <span
         className={cn(
           "flex size-9 shrink-0 items-center justify-center rounded-full",
-          correct ? "bg-accent text-white" : "bg-wrong text-white",
+          info
+            ? "bg-accent-soft text-accent"
+            : correct
+              ? "bg-accent text-white"
+              : "bg-wrong text-white",
         )}
       >
-        {correct ? (
+        {info ? (
+          <Sparkles className="size-5" />
+        ) : correct ? (
           <Check className="size-5" strokeWidth={3} />
         ) : (
           <X className="size-5" strokeWidth={3} />

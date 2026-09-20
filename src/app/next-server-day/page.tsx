@@ -6,7 +6,10 @@ import { Sparkles, Minus, Plus, Trash2, X } from "lucide-react";
 import { QuestionBubble } from "@/components/question-bubble";
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { GalleryWatch } from "@/components/next-server-day/gallery-watch";
-import { StandingsReveal } from "@/components/next-server-day/standings-reveal";
+import {
+  StandingsReveal,
+  type StandingsRecap,
+} from "@/components/next-server-day/standings-reveal";
 import { WaitingBanner } from "@/components/next-server-day/waiting-banner";
 import { InviteShare } from "@/components/next-server-day/invite-share";
 import { EventShell } from "@/components/next-server-day/event-shell";
@@ -1028,6 +1031,33 @@ export default function NextServerDayPage() {
     return "残念、不正解です！次に期待です！";
   }
 
+  /**
+   * What a gallery spectator sees on the standings screen instead of a
+   * personal recap — they never submitted anything, so there's no "あなたの
+   * 回答" side, just the correct answer/model solution and the explanation.
+   * Reuses formatAnswerComparison with a throwaway draft: every one of its
+   * correct-answer branches is computed from the question alone, never from
+   * the draft's actual values, so an empty placeholder draft is safe.
+   */
+  function buildSpectatorRecap(spectatorQuestion: NextServerDayQuestion): StandingsRecap {
+    const comparison = formatAnswerComparison(
+      spectatorQuestion,
+      initialDraft(spectatorQuestion),
+    );
+    return {
+      result: "info",
+      title: "正解と解説",
+      prompt: spectatorQuestion.prompt,
+      code: spectatorQuestion.code,
+      gain: null,
+      explanation: spectatorQuestion.explanation,
+      correctAnswer: comparison.correctAnswer,
+      correctAnswerFill: comparison.correctAnswerFill,
+      solution: spectatorQuestion.kind === "bugfix" ? spectatorQuestion.solution : null,
+      codeExample: spectatorQuestion.kind === "code" ? spectatorQuestion.example : null,
+    };
+  }
+
   const readyToSubmit = Boolean(question && canSubmitDraft(question, draft));
 
   if (!teams || !roomId || !room) {
@@ -1469,7 +1499,7 @@ export default function NextServerDayPage() {
             isLast={(galleryFocusIndex ?? 0) + 1 >= galleryQuestions.length}
             canAdvance={isHost(room, memberId)}
             onAdvance={handleGalleryMasterAdvance}
-            recap={null}
+            recap={buildSpectatorRecap(galleryQuestion)}
           />
         </EventShell>
       );
