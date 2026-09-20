@@ -38,14 +38,18 @@ export type StandingsRecap = {
   code?: string;
   gain: number | null;
   explanation: string;
-  /** Choice/order: what the player answered, as plain text. */
+  /** Choice: what the player answered, as plain text. */
   yourAnswer?: string | null;
-  /** Choice/order: the correct answer, as plain text. */
+  /** Choice: the correct answer, as plain text. */
   correctAnswer?: string | null;
   /** Blank: what the player filled in — an empty blank renders as its own marked word. */
   yourAnswerFill?: TemplateFill | null;
   /** Blank: the correct fill. */
   correctAnswerFill?: TemplateFill | null;
+  /** Order: what the player submitted, one item per line. */
+  yourAnswerList?: string[] | null;
+  /** Order: the correct order, one item per line. */
+  correctAnswerList?: string[] | null;
   /** Bugfix questions answered wrong: the student's code diffed against the model solution. */
   codeDiff?: DiffLine[] | null;
   /** Bugfix questions: the clean full solution, shown alongside the diff. */
@@ -414,6 +418,32 @@ function AnswerBox({
 }
 
 /**
+ * An order answer, one item per numbered row — mirrors the look of the
+ * draggable list the player actually answered with (see AnswerPanel's
+ * OrderList), just without the drag handle/arrows, since this is a frozen
+ * historical view, not something to rearrange.
+ */
+function OrderedAnswerList({ items }: { items: string[] }) {
+  return (
+    <ol className="flex flex-col gap-1.5">
+      {items.map((item, index) => (
+        <li
+          key={index}
+          className="flex items-start gap-2 rounded-lg border border-border/70 bg-background/60 px-2.5 py-2"
+        >
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-black text-muted-foreground">
+            {index + 1}
+          </span>
+          <pre className="min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap font-mono text-xs font-semibold leading-snug text-foreground">
+            {item}
+          </pre>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
  * A blank-fill template rendered as sentence text with each blank's value as
  * its own inline word — an empty blank is a clearly marked "missing" chip
  * instead of blending into the surrounding line as plain text.
@@ -482,7 +512,9 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
         {recap.yourAnswer != null ||
         recap.correctAnswer != null ||
         recap.yourAnswerFill ||
-        recap.correctAnswerFill ? (
+        recap.correctAnswerFill ||
+        recap.yourAnswerList ||
+        recap.correctAnswerList ? (
           <div className="mt-2 flex flex-col gap-2">
             {recap.yourAnswer != null ? (
               <AnswerBox label="あなたの回答" tone="neutral">
@@ -492,6 +524,10 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
               <AnswerBox label="あなたの回答" tone="neutral">
                 <FilledTemplateText fill={recap.yourAnswerFill} />
               </AnswerBox>
+            ) : recap.yourAnswerList ? (
+              <AnswerBox label="あなたの回答" tone="neutral">
+                <OrderedAnswerList items={recap.yourAnswerList} />
+              </AnswerBox>
             ) : null}
             {recap.correctAnswer != null ? (
               <AnswerBox label="正解" tone="accent">
@@ -500,6 +536,10 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
             ) : recap.correctAnswerFill ? (
               <AnswerBox label="正解" tone="accent">
                 <FilledTemplateText fill={recap.correctAnswerFill} />
+              </AnswerBox>
+            ) : recap.correctAnswerList ? (
+              <AnswerBox label="正解" tone="accent">
+                <OrderedAnswerList items={recap.correctAnswerList} />
               </AnswerBox>
             ) : null}
           </div>

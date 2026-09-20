@@ -217,7 +217,7 @@ export function ResultScreen({
         <Drumroll onSkip={revealFinal} grand />
       ) : finalGateOpen ? (
         <>
-          {podiumOrder.slice(0, finalRankStep).map((rankIndex) => {
+          {[...podiumOrder.slice(0, finalRankStep)].reverse().map((rankIndex) => {
             const team = overallRanked[rankIndex];
             if (!team) return null;
             if (rankIndex === 0) {

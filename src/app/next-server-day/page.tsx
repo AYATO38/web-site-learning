@@ -1051,6 +1051,7 @@ export default function NextServerDayPage() {
       explanation: spectatorQuestion.explanation,
       correctAnswer: comparison.correctAnswer,
       correctAnswerFill: comparison.correctAnswerFill,
+      correctAnswerList: comparison.correctAnswerList,
       solution: spectatorQuestion.kind === "bugfix" ? spectatorQuestion.solution : null,
       codeExample: spectatorQuestion.kind === "code" ? spectatorQuestion.example : null,
     };

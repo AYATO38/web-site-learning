@@ -73,15 +73,18 @@ export type AnswerComparison = {
   correctAnswer?: string;
   yourAnswerFill?: TemplateFill;
   correctAnswerFill?: TemplateFill;
+  /** Order: each item on its own line, in the order given — not joined into one string, so a multi-line code snippet per item stays readable. */
+  yourAnswerList?: string[];
+  correctAnswerList?: string[];
 };
 
 /**
  * Formats the player's answer and the correct answer for the recap screen —
- * plain text for choice/order, or a TemplateFill for blank (so an empty
- * blank renders as its own marked word instead of plain text buried in a
- * sentence). Bugfix and code answers are code, not short text, so they're
- * handled separately (a code diff / code blocks) by the caller instead of
- * through this.
+ * plain text for choice, a TemplateFill for blank (so an empty blank renders
+ * as its own marked word instead of plain text buried in a sentence), or an
+ * ordered list for order. Bugfix and code answers are code, not short text,
+ * so they're handled separately (a code diff / code blocks) by the caller
+ * instead of through this.
  */
 export function formatAnswerComparison(
   question: NextServerDayQuestion,
@@ -105,8 +108,11 @@ export function formatAnswerComparison(
   }
   if (question.kind === "order" && draft.kind === "order") {
     return {
-      yourAnswer: draft.items.join(" → "),
-      correctAnswer: question.items.join(" → "),
+      yourAnswerList: draft.items,
+      // question.items is just how the question was authored — when
+      // acceptedOrders exists, that's the actual graded answer (items alone
+      // can be, and often is, a different order from every accepted one).
+      correctAnswerList: question.acceptedOrders?.[0] ?? question.items,
     };
   }
   return {};
