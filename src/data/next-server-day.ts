@@ -496,10 +496,21 @@ members.forEach((member) => {
   }
 }`,
     language: "js",
+    accepted: [
+      `async function loadUser() {
+  try {
+    const response = await fetch("/api/user");
+    const data = await response.json();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}`,
+    ],
     mustInclude: ["catch (err)", "console.error(err)"],
     mustNotInclude: ["console.error(error)"],
     explanation:
-      "catch (err) { ... } の中では、キャッチした例外は err という名前でしか参照できません。console.error(error) は定義されていない error を参照してしまい、通信エラーとは別の ReferenceError になって元のエラー内容が分からなくなります。console.error(err) と直しましょう。",
+      "catch (err) { ... } の中では、キャッチした例外は err という名前でしか参照できません。console.error(error) は定義されていない error を参照してしまい、通信エラーとは別の ReferenceError になって元のエラー内容が分からなくなります。console.error(err) と直すか、catch (error) { console.error(error); } のように名前をそろえても大丈夫です。",
     xp: 70,
   },
 ];
