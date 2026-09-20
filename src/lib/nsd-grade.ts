@@ -338,6 +338,12 @@ export function speedWindowSeconds(difficulty: Difficulty): number {
   return QUESTION_TIME_LIMIT_SECONDS[difficulty];
 }
 
+/**
+ * A correct answer earns up to baseXp — the full amount only right away,
+ * decaying the slower you take, down to a 1-point floor at the time limit.
+ * A wrong answer is handled entirely by the caller and never reaches this:
+ * it's always 0.
+ */
 export function earnedXp({
   baseXp,
   elapsedMs,
@@ -346,11 +352,10 @@ export function earnedXp({
   baseXp: number;
   elapsedMs: number;
   windowSeconds: number;
-}): { xp: number; bonus: number } {
+}): number {
   const remainingRatio = Math.max(
     0,
     Math.min(1, 1 - Math.max(0, elapsedMs) / (windowSeconds * 1000)),
   );
-  const xp = Math.max(1, Math.round(baseXp * (1 + remainingRatio)));
-  return { xp, bonus: xp - baseXp };
+  return Math.max(1, Math.round(baseXp * remainingRatio));
 }

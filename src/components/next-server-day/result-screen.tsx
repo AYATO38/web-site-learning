@@ -17,6 +17,7 @@ import {
 import { LiveBoard } from "@/components/next-server-day/live-board";
 import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
 import { PodiumCelebration } from "@/components/next-server-day/podium-celebration";
+import { rankAccent, rankIconColor } from "@/lib/nsd-rank-colors";
 import {
   DRUMROLL_MS,
   GRAND_DRUMROLL_MS,
@@ -33,20 +34,6 @@ function rankLabel(index: number, championLabel: string = "1位") {
   if (index === 1) return "2位";
   if (index === 2) return "3位";
   return `${index + 1}位`;
-}
-
-function rankAccent(index: number) {
-  if (index === 0) return "from-[#f6e3a3]/60 to-transparent ring-[#d4af37]";
-  if (index === 1) return "from-[#e4e6ea]/60 to-transparent ring-[#b0b4bd]";
-  if (index === 2) return "from-[#e9c9a0]/55 to-transparent ring-[#c98a4b]";
-  return "from-white to-white ring-border";
-}
-
-function rankIconColor(index: number) {
-  if (index === 0) return "text-[#b8860b]";
-  if (index === 1) return "text-[#8a8f99]";
-  if (index === 2) return "text-[#a5652e]";
-  return "text-muted-foreground";
 }
 
 export function ResultScreen({
@@ -459,7 +446,7 @@ function Drumroll({
         ))}
       </div>
       <p className="mt-5 text-sm font-semibold text-muted-foreground">
-        {grand ? "最終結果を発表します" : "1位チームを発表します"}
+        {grand ? "最終結果を発表します" : "順位を発表します"}
       </p>
       <button
         type="button"

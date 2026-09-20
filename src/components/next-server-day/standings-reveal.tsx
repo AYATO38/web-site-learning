@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Medal,
   Minus,
   Sparkles,
   Trophy,
@@ -16,6 +17,7 @@ import { QuestionBubble } from "@/components/question-bubble";
 import { PlayerAvatar } from "@/components/next-server-day/player-avatar";
 import { CodeDiffView } from "@/components/next-server-day/code-diff-view";
 import { CodeExampleView } from "@/components/next-server-day/code-example-view";
+import { rankAccent, rankIconColor } from "@/lib/nsd-rank-colors";
 import { playResultSfx } from "@/lib/sfx";
 import type { DiffLine } from "@/lib/nsd-code-diff";
 import type { TemplateFill } from "@/lib/nsd-grade";
@@ -34,7 +36,7 @@ export type StandingsRecap = {
   /** So the question stays visible on this screen, not just during "answering". */
   prompt: string;
   code?: string;
-  gain: { xp: number; bonus: number } | null;
+  gain: number | null;
   explanation: string;
   /** Choice/order: what the player answered, as plain text. */
   yourAnswer?: string | null;
@@ -199,10 +201,8 @@ export function StandingsReveal({
                 else nodeRefs.current.delete(player.id);
               }}
               className={cn(
-                "flex items-center gap-3 rounded-2xl px-3 py-2.5 ring-1 transition-[opacity,transform] duration-500 ease-out will-change-transform",
-                index === 0
-                  ? "bg-gradient-to-r from-[#c9a39a]/25 to-transparent ring-[#c9a39a]/50"
-                  : "bg-muted ring-transparent",
+                "flex items-center gap-3 rounded-2xl bg-gradient-to-r px-3 py-2.5 ring-1 transition-[opacity,transform] duration-500 ease-out will-change-transform",
+                rankAccent(index),
                 isMine && "ring-accent",
                 shown ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
               )}
@@ -210,7 +210,9 @@ export function StandingsReveal({
             >
               <span className="flex w-6 shrink-0 items-center justify-center text-lg font-black tabular-nums">
                 {index === 0 ? (
-                  <Trophy className="size-5 text-accent" />
+                  <Trophy className={cn("size-5", rankIconColor(index))} />
+                ) : index < 3 ? (
+                  <Medal className={cn("size-5", rankIconColor(index))} />
                 ) : (
                   index + 1
                 )}
@@ -475,10 +477,7 @@ function RecapCard({ recap }: { recap: StandingsRecap }) {
       <div className="min-w-0">
         <p className="text-base font-extrabold leading-snug">{recap.title}</p>
         {correct && recap.gain ? (
-          <p className="mt-1 text-sm font-bold">
-            +{recap.gain.xp} XP
-            {recap.gain.bonus > 0 ? `（速さボーナス +${recap.gain.bonus}）` : ""}
-          </p>
+          <p className="mt-1 text-sm font-bold">+{recap.gain} XP</p>
         ) : null}
         {recap.yourAnswer != null ||
         recap.correctAnswer != null ||

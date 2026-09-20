@@ -189,9 +189,7 @@ export default function NextServerDayPage() {
   const [skipAutoSeat, setSkipAutoSeat] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [lastGain, setLastGain] = useState<{ xp: number; bonus: number } | null>(
-    null,
-  );
+  const [lastGain, setLastGain] = useState<number | null>(null);
   const [standingsSnapshot, setStandingsSnapshot] = useState<
     RankedPlayer[] | null
   >(null);
@@ -584,8 +582,8 @@ export default function NextServerDayPage() {
         windowSeconds: speedWindowSeconds(question.difficulty),
       });
       const nextCombo = combo + 1;
-      const nextXp = xp + gain.xp;
-      const nextAnswers = [...answers, { correct: true, xp: gain.xp }];
+      const nextXp = xp + gain;
+      const nextAnswers = [...answers, { correct: true, xp: gain }];
       setCombo(nextCombo);
       setXp(nextXp);
       setLastGain(gain);
@@ -1306,7 +1304,7 @@ export default function NextServerDayPage() {
               </section>
 
               <p className="mt-5 text-center text-xs text-muted-foreground">
-                1問の制限時間は難易度ごとに固定です（初級3分・中級5分・上級5分）。早く答えるほど XP が増えます（最大2倍）。
+                1問の制限時間は難易度ごとに固定です（初級3分・中級5分・上級5分）。正解の得点は速いほど高く、遅いほど下がります。不正解は0点です。
               </p>
 
               {error && (
@@ -1744,8 +1742,8 @@ export default function NextServerDayPage() {
             )}
             <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-semibold text-foreground">
               {phase === "answering" && previewGain
-                ? `今 +${previewGain.xp} XP`
-                : `XP +${question.xp}〜${question.xp * 2}`}
+                ? `今 +${previewGain} XP`
+                : `XP +1〜${question.xp}`}
             </span>
           </div>
         </div>
