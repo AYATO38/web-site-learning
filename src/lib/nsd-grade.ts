@@ -338,11 +338,16 @@ export function speedWindowSeconds(difficulty: Difficulty): number {
   return QUESTION_TIME_LIMIT_SECONDS[difficulty];
 }
 
+/** How much faster XP decays than the question's own time limit — reaching the 1-point floor at 1/1.5 (≈67%) of the way through, not at the deadline itself. */
+const XP_DECAY_SPEED = 1.5;
+
 /**
  * A correct answer earns up to baseXp — the full amount only right away,
- * decaying the slower you take, down to a 1-point floor at the time limit.
- * A wrong answer is handled entirely by the caller and never reaches this:
- * it's always 0.
+ * decaying the slower you take, down to a 1-point floor well before the
+ * time limit itself (see XP_DECAY_SPEED) — so there's still a real reward
+ * for beating the clock even in a question's back half, instead of the
+ * decay dragging out across the whole window. A wrong answer is handled
+ * entirely by the caller and never reaches this: it's always 0.
  */
 export function earnedXp({
   baseXp,
@@ -355,7 +360,10 @@ export function earnedXp({
 }): number {
   const remainingRatio = Math.max(
     0,
-    Math.min(1, 1 - Math.max(0, elapsedMs) / (windowSeconds * 1000)),
+    Math.min(
+      1,
+      1 - (XP_DECAY_SPEED * Math.max(0, elapsedMs)) / (windowSeconds * 1000),
+    ),
   );
   return Math.max(1, Math.round(baseXp * remainingRatio));
 }
