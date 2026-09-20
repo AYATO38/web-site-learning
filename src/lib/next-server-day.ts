@@ -91,7 +91,7 @@ export const QUESTION_KIND_LABELS: Record<QuestionKind, string> = {
 export const DIFFICULTY_LABELS: Record<Difficulty, { label: string; desc: string }> = {
   beginner: { label: "初級", desc: "HTML" },
   intermediate: { label: "中級", desc: "Tailwind CSS" },
-  advanced: { label: "上級", desc: "JS / React" },
+  advanced: { label: "上級", desc: "JS" },
 };
 
 /** Each difficulty gets its own fixed per-question clock — no per-kind exceptions. */
