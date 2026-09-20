@@ -28,6 +28,7 @@ type RoomRow = {
   released_question?: number | null;
   results_released?: boolean | null;
   final_results_released?: boolean | null;
+  final_rank_step?: number | null;
 };
 
 function parseJsonArray<T>(value: T[] | string | null | undefined): T[] {
@@ -58,6 +59,8 @@ function rowToRoom(row: RoomRow): Room {
       typeof row.released_question === "number" ? row.released_question : -1,
     resultsReleased: Boolean(row.results_released),
     finalResultsReleased: Boolean(row.final_results_released),
+    finalRankStep:
+      typeof row.final_rank_step === "number" ? row.final_rank_step : 0,
   });
 }
 
@@ -92,7 +95,7 @@ export async function getRoom(id: string): Promise<Room | undefined> {
     SELECT id, teams, updated_at,
            host_member_id, host_name, gallery_capacity, gallery,
            settings_notice, settings_updated_at, released_question, results_released,
-           final_results_released
+           final_results_released, final_rank_step
     FROM rooms WHERE id = ${code} LIMIT 1
   `) as RoomRow[];
   return rows[0] ? rowToRoom(rows[0]) : undefined;
@@ -122,6 +125,7 @@ export async function createRoom(
       releasedQuestion: -1,
       resultsReleased: false,
       finalResultsReleased: false,
+      finalRankStep: 0,
     });
     try {
       await sql`
@@ -129,7 +133,7 @@ export async function createRoom(
           id, teams, updated_at,
           host_member_id, host_name, gallery_capacity, gallery,
           settings_notice, settings_updated_at, released_question, results_released,
-          final_results_released
+          final_results_released, final_rank_step
         )
         VALUES (
           ${room.id},
@@ -143,7 +147,8 @@ export async function createRoom(
           ${room.settingsUpdatedAt},
           ${room.releasedQuestion},
           ${room.resultsReleased},
-          ${room.finalResultsReleased}
+          ${room.finalResultsReleased},
+          ${room.finalRankStep}
         )
       `;
       return room;
@@ -190,12 +195,13 @@ export async function patchTeam(
         settings_updated_at = ${next.settingsUpdatedAt},
         released_question = ${next.releasedQuestion},
         results_released = ${next.resultsReleased},
-        final_results_released = ${next.finalResultsReleased}
+        final_results_released = ${next.finalResultsReleased},
+        final_rank_step = ${next.finalRankStep}
       WHERE id = ${room.id} AND updated_at = ${room.updatedAt}
       RETURNING id, teams, updated_at,
                 host_member_id, host_name, gallery_capacity, gallery,
                 settings_notice, settings_updated_at, released_question, results_released,
-                final_results_released
+                final_results_released, final_rank_step
     `) as RoomRow[];
 
     if (rows[0]) return rowToRoom(rows[0]);

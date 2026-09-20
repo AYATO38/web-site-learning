@@ -1,5 +1,6 @@
 import {
   QUESTION_TIME_LIMIT_SECONDS,
+  type Difficulty,
   type NextServerDayQuestion,
 } from "@/lib/next-server-day";
 
@@ -328,13 +329,13 @@ function orderMatches(got: string[], accepted: string[][]): boolean {
   );
 }
 
-/** Every question — regardless of kind — gets the same fixed clock. */
-export function questionTimeLimit(): number {
-  return QUESTION_TIME_LIMIT_SECONDS;
+/** Every question in a difficulty — regardless of kind — gets that difficulty's fixed clock. */
+export function questionTimeLimit(difficulty: Difficulty): number {
+  return QUESTION_TIME_LIMIT_SECONDS[difficulty];
 }
 
-export function speedWindowSeconds(): number {
-  return QUESTION_TIME_LIMIT_SECONDS;
+export function speedWindowSeconds(difficulty: Difficulty): number {
+  return QUESTION_TIME_LIMIT_SECONDS[difficulty];
 }
 
 export function earnedXp({

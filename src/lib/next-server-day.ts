@@ -94,9 +94,21 @@ export const DIFFICULTY_LABELS: Record<Difficulty, { label: string; desc: string
   advanced: { label: "上級", desc: "JS / React" },
 };
 
-/** Every question gets the same 3-minute clock — no per-room or per-kind exceptions. */
-export const QUESTION_TIME_LIMIT_SECONDS = 180;
-export const QUESTION_TIME_LIMIT_LABEL = "1問3分";
+/** Each difficulty gets its own fixed per-question clock — no per-kind exceptions. */
+export const QUESTION_TIME_LIMIT_SECONDS: Record<Difficulty, number> = {
+  beginner: 180,
+  intermediate: 300,
+  advanced: 300,
+};
+
+/** The longest clock any difficulty uses — for timeouts that must outlast every question regardless of which difficulty is running. */
+export const MAX_QUESTION_TIME_LIMIT_SECONDS = Math.max(
+  ...Object.values(QUESTION_TIME_LIMIT_SECONDS),
+);
+
+export function questionTimeLimitLabel(difficulty: Difficulty): string {
+  return `1問${QUESTION_TIME_LIMIT_SECONDS[difficulty] / 60}分`;
+}
 
 const DIFFICULTY_ORDER: Difficulty[] = ["beginner", "intermediate", "advanced"];
 

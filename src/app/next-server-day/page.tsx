@@ -23,7 +23,7 @@ import { diffBugfixAnswer } from "@/lib/nsd-code-diff";
 import {
   DIFFICULTY_LABELS,
   QUESTION_KIND_LABELS,
-  QUESTION_TIME_LIMIT_LABEL,
+  questionTimeLimitLabel,
   type Difficulty,
   type NextServerDayQuestion,
 } from "@/lib/next-server-day";
@@ -50,6 +50,7 @@ import {
   lockedDifficulty,
   normalizeGalleryCapacity,
   normalizeRoomCode,
+  advanceFinalRankStep,
   pendingPlayers,
   readyToReveal,
   releaseQuestion,
@@ -125,7 +126,7 @@ function DifficultyStartGrid({
               <div>
                 <div className="text-lg font-extrabold">{d.label}</div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {d.desc} · {count}問
+                  {d.desc} · {count}問 · {questionTimeLimitLabel(key)}
                 </div>
                 <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   {kinds}
@@ -221,7 +222,7 @@ export default function NextServerDayPage() {
 
   const total = activeQuestions.length;
   const question = activeQuestions[current];
-  const timeCap = questionTimeLimit();
+  const timeCap = questionTimeLimit(selectedDifficulty ?? "beginner");
   const questionKey = question ? `${question.id}:${attempt}` : null;
 
   if (question && questionKey !== draftKey) {
@@ -559,7 +560,7 @@ export default function NextServerDayPage() {
     ? earnedXp({
         baseXp: question.xp,
         elapsedMs,
-        windowSeconds: speedWindowSeconds(),
+        windowSeconds: speedWindowSeconds(question.difficulty),
       })
     : null;
 
@@ -570,7 +571,7 @@ export default function NextServerDayPage() {
       const gain = earnedXp({
         baseXp: question.xp,
         elapsedMs,
-        windowSeconds: speedWindowSeconds(),
+        windowSeconds: speedWindowSeconds(question.difficulty),
       });
       const nextCombo = combo + 1;
       const nextXp = xp + gain.xp;
@@ -902,6 +903,15 @@ export default function NextServerDayPage() {
     if (!roomId || !memberId || !room || !isHost(room, memberId)) return;
     try {
       setRoom(await revealFinalResults(roomId, memberId));
+    } catch {
+      /* the room poll will pick up a retry on the next click */
+    }
+  }
+
+  async function handleAdvanceFinalRankStep(step: number) {
+    if (!roomId || !memberId || !room || !isHost(room, memberId)) return;
+    try {
+      setRoom(await advanceFinalRankStep(roomId, memberId, step));
     } catch {
       /* the room poll will pick up a retry on the next click */
     }
@@ -1241,7 +1251,7 @@ export default function NextServerDayPage() {
               </section>
 
               <p className="mt-5 text-center text-xs text-muted-foreground">
-                {QUESTION_TIME_LIMIT_LABEL}固定です。早く答えるほど XP が増えます（最大2倍）。
+                1問の制限時間は難易度ごとに固定です（初級3分・中級5分・上級5分）。早く答えるほど XP が増えます（最大2倍）。
               </p>
 
               {error && (
@@ -1311,8 +1321,8 @@ export default function NextServerDayPage() {
             title="チームを選ぶ"
             subtitle={
               room.host
-                ? `ルームマスター: ${room.host.name} · ${QUESTION_TIME_LIMIT_LABEL}`
-                : `名前を入れて、同じチームに複数人で入れます · ${QUESTION_TIME_LIMIT_LABEL}`
+                ? `ルームマスター: ${room.host.name}`
+                : "名前を入れて、同じチームに複数人で入れます"
             }
           />
 
@@ -1411,6 +1421,7 @@ export default function NextServerDayPage() {
             onAdvanceDifficulty={handleAdvanceDifficulty}
             onRevealResults={handleRevealResults}
             onRevealFinalResults={handleRevealFinalResults}
+            onAdvanceFinalRankStep={handleAdvanceFinalRankStep}
             spectator
           />
         ) : (
@@ -1479,7 +1490,7 @@ export default function NextServerDayPage() {
                 ? "難易度を選んでスタート"
                 : "スタート待ち"
             }
-            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"}${isHost(room, memberId) ? " · ルームマスター" : ""} · ${QUESTION_TIME_LIMIT_LABEL}`}
+            subtitle={`自分のチーム: ${myTeam} / ${displayName || "未設定"}${isHost(room, memberId) ? " · ルームマスター" : ""}`}
           />
           <button
             type="button"
@@ -1530,6 +1541,7 @@ export default function NextServerDayPage() {
           onAdvanceDifficulty={handleAdvanceDifficulty}
           onRevealResults={handleRevealResults}
           onRevealFinalResults={handleRevealFinalResults}
+          onAdvanceFinalRankStep={handleAdvanceFinalRankStep}
         />
       </EventShell>
     );
@@ -1606,7 +1618,7 @@ export default function NextServerDayPage() {
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground">
-              {roomId} · {myTeam} · {QUESTION_TIME_LIMIT_LABEL}
+              {roomId} · {myTeam} · {questionTimeLimitLabel(selectedDifficulty ?? "beginner")}
             </p>
             <h2 className="mt-2 text-lg font-black tracking-tight">みんなでクイズ</h2>
           </div>

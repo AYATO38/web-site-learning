@@ -1,6 +1,6 @@
 import {
   DIFFICULTY_LABELS,
-  QUESTION_TIME_LIMIT_SECONDS,
+  MAX_QUESTION_TIME_LIMIT_SECONDS,
   type Difficulty,
 } from "@/lib/next-server-day";
 import { normalizeOutfit, type MascotOutfit } from "@/lib/mascot";
@@ -67,6 +67,8 @@ export type Room = {
   resultsReleased: boolean;
   /** Room master has pressed 最終結果発表を見る, after advanced's own ranking, to reveal the cumulative ranking. */
   finalResultsReleased: boolean;
+  /** How many of the 3位→2位→1位 countdown steps the room master has revealed so far, on the final ranking. */
+  finalRankStep: number;
 };
 
 export const TEAM_MAX_MEMBERS = 8;
@@ -98,6 +100,8 @@ export type RoomSettingsPatch = {
   revealResults?: boolean;
   /** Room master starting the cumulative final-results reveal, after advanced's own ranking. */
   revealFinalResults?: boolean;
+  /** Room master advancing the 3位→2位→1位 countdown to this step (1, 2, or 3). */
+  advanceFinalRankStep?: number;
 };
 
 export type RoomUpdate = TeamStatusUpdate & {
@@ -139,6 +143,8 @@ export function normalizeRoom(room: Room): Room {
       typeof room.releasedQuestion === "number" ? room.releasedQuestion : -1,
     resultsReleased: Boolean(room.resultsReleased),
     finalResultsReleased: Boolean(room.finalResultsReleased),
+    finalRankStep:
+      typeof room.finalRankStep === "number" ? room.finalRankStep : 0,
   };
 }
 
@@ -256,6 +262,7 @@ function advanceRoomDifficulty(room: Room, difficulty: Difficulty) {
   // this run's already having been revealed must not carry over.
   room.resultsReleased = false;
   room.finalResultsReleased = false;
+  room.finalRankStep = 0;
   room.settingsNotice = `ルームマスターが${DIFFICULTY_LABELS[difficulty].label}に進みました`;
   room.settingsUpdatedAt = Date.now();
 }
@@ -299,6 +306,12 @@ export function applyRoomUpdate(
     }
     if (update.settings.revealFinalResults) {
       next.finalResultsReleased = true;
+    }
+    if (typeof update.settings.advanceFinalRankStep === "number") {
+      next.finalRankStep = Math.max(
+        next.finalRankStep,
+        update.settings.advanceFinalRankStep,
+      );
     }
     if (notices.length === 0) {
       next.updatedAt = Date.now();
@@ -466,12 +479,12 @@ export type PendingPlayer = {
   away: boolean;
 };
 
-// Must stay comfortably above the question's own time limit: a player still
-// legitimately thinking (no network activity yet, but well within their
-// allowed time) must never be mistaken for "away" and skipped past. The
-// grace period beyond the time limit covers the trip for their own
-// timeout/answer sync to land.
-const WAIT_STALE_MS = (QUESTION_TIME_LIMIT_SECONDS + 30) * 1000;
+// Must stay comfortably above the longest difficulty's question time limit: a
+// player still legitimately thinking (no network activity yet, but well
+// within their allowed time) must never be mistaken for "away" and skipped
+// past, on any difficulty. The grace period beyond the time limit covers the
+// trip for their own timeout/answer sync to land.
+const WAIT_STALE_MS = (MAX_QUESTION_TIME_LIMIT_SECONDS + 30) * 1000;
 
 /**
  * Other room members (any team — the leaderboard is room-wide) who have not
@@ -641,5 +654,16 @@ export async function revealFinalResults(
 ): Promise<Room> {
   return updateRoomSettings(roomId, memberId, {
     revealFinalResults: true,
+  });
+}
+
+/** Room master only: advance the 3位→2位→1位 countdown to this step. */
+export async function advanceFinalRankStep(
+  roomId: string,
+  memberId: string,
+  step: number,
+): Promise<Room> {
+  return updateRoomSettings(roomId, memberId, {
+    advanceFinalRankStep: step,
   });
 }

@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { QUESTION_TIME_LIMIT_LABEL } from "@/lib/next-server-day";
-import { GALLERY_MAX, isHost, updateRoomSettings, type Room } from "@/lib/nsd-room";
+import { questionTimeLimitLabel } from "@/lib/next-server-day";
+import {
+  GALLERY_MAX,
+  isHost,
+  lockedDifficulty,
+  updateRoomSettings,
+  type Room,
+} from "@/lib/nsd-room";
 import { Minus, Plus } from "lucide-react";
 
 const NOTICE_MS = 12000;
@@ -19,6 +25,7 @@ export function RoomSettingsPanel({
 }) {
   const master = isHost(room, memberId);
   const canEditGallery = master;
+  const difficulty = lockedDifficulty(room);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -81,7 +88,9 @@ export function RoomSettingsPanel({
 
       <p className="mt-4 text-sm font-bold">1問の制限時間</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        {QUESTION_TIME_LIMIT_LABEL}（固定）
+        {difficulty
+          ? `${questionTimeLimitLabel(difficulty)}（固定）`
+          : "難易度によって異なります（初級3分・中級5分・上級5分）"}
       </p>
 
       <p className="mt-4 text-sm font-bold">ギャラリー枠</p>

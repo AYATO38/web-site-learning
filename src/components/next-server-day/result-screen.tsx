@@ -27,8 +27,9 @@ import {
   stopDrumrollSfx,
 } from "@/lib/sfx";
 
-function rankLabel(index: number) {
-  if (index === 0) return "優勝";
+/** Each difficulty's own ranking says "1位" — only the final, cumulative ranking calls it 優勝. */
+function rankLabel(index: number, championLabel: string = "1位") {
+  if (index === 0) return championLabel;
   if (index === 1) return "2位";
   if (index === 2) return "3位";
   return `${index + 1}位`;
@@ -61,6 +62,7 @@ export function ResultScreen({
   onAdvanceDifficulty,
   onRevealResults,
   onRevealFinalResults,
+  onAdvanceFinalRankStep,
   spectator = false,
 }: {
   room: Room;
@@ -76,6 +78,7 @@ export function ResultScreen({
   onAdvanceDifficulty: (next: Difficulty) => void;
   onRevealResults: () => void;
   onRevealFinalResults: () => void;
+  onAdvanceFinalRankStep: (step: number) => void;
   spectator?: boolean;
 }) {
   const ranked = [...room.teams]
@@ -100,7 +103,21 @@ export function ResultScreen({
   const overallRanked = [...room.teams]
     .filter((team) => team.members.length > 0)
     .sort((a, b) => teamOverallXp(b) - teamOverallXp(a));
-  const overallWinner = overallRanked[0];
+  // The countdown ceremony's reveal order — indexes into overallRanked, from
+  // 3rd place up to 1st (fewer steps if there aren't 3 teams to rank).
+  const podiumOrder = [2, 1, 0].filter((index) => index < overallRanked.length);
+  // A solo replay has no one to sync a countdown with, so it just sees
+  // everything at once, same as it already skips the other final-stage gates.
+  const finalRankStep =
+    attempt > 0
+      ? podiumOrder.length
+      : Math.min(room.finalRankStep ?? 0, podiumOrder.length);
+  const pendingFinalRankReveal = finalRankStep < podiumOrder.length;
+  const nextPodiumRank =
+    pendingFinalRankReveal ? podiumOrder[finalRankStep] + 1 : null;
+  const remainingRankedTeams = overallRanked.filter(
+    (_, index) => !podiumOrder.includes(index),
+  );
   const [revealed, setRevealed] = useState(false);
   const revealedRef = useRef(false);
 
@@ -213,34 +230,78 @@ export function ResultScreen({
         <Drumroll onSkip={revealFinal} grand />
       ) : finalGateOpen ? (
         <>
-          {overallWinner && <PodiumCelebration team={overallWinner} />}
+          {podiumOrder.slice(0, finalRankStep).map((rankIndex) => {
+            const team = overallRanked[rankIndex];
+            if (!team) return null;
+            if (rankIndex === 0) {
+              return <PodiumCelebration key={team.name} team={team} />;
+            }
+            return (
+              <div
+                key={team.name}
+                className="event-card mt-6 rounded-2xl p-5 text-center"
+              >
+                <p
+                  className={cn(
+                    "text-sm font-bold",
+                    rankIndex === 1 ? "text-[#8a8f99]" : "text-[#a5652e]",
+                  )}
+                >
+                  {rankIndex + 1}位
+                </p>
+                <p className="mt-1 text-xl font-black">{team.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {teamOverallXp(team)} XP · {team.members.length}人
+                </p>
+              </div>
+            );
+          })}
 
-          <section className="event-card mt-6 rounded-2xl p-4">
-            <p className="section-en">Final</p>
-            <h2 className="mt-1 text-base font-bold">最終結果発表</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              初級・中級・上級の合計ポイントです
-            </p>
-            <ol className="mt-4 flex flex-col gap-2">
-              {overallRanked.map((team, index) => (
-                <RankRow
-                  key={team.name}
-                  team={team}
-                  index={index}
-                  isMine={Boolean(myTeam && team.name === myTeam)}
-                  room={room}
-                  xp={teamOverallXp(team)}
-                />
-              ))}
-            </ol>
-          </section>
+          {!pendingFinalRankReveal && remainingRankedTeams.length > 0 ? (
+            <section className="event-card mt-6 rounded-2xl p-4">
+              <p className="section-en">Final</p>
+              <h2 className="mt-1 text-base font-bold">最終結果発表</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                初級・中級・上級の合計ポイントです
+              </p>
+              <ol className="mt-4 flex flex-col gap-2">
+                {remainingRankedTeams.map((team) => (
+                  <RankRow
+                    key={team.name}
+                    team={team}
+                    index={overallRanked.indexOf(team)}
+                    isMine={Boolean(myTeam && team.name === myTeam)}
+                    room={room}
+                    xp={teamOverallXp(team)}
+                  />
+                ))}
+              </ol>
+            </section>
+          ) : null}
+
+          {pendingFinalRankReveal ? (
+            isHost(room, myMemberId) ? (
+              <button
+                type="button"
+                onClick={() => onAdvanceFinalRankStep(finalRankStep + 1)}
+                className="event-cta mt-6 w-full rounded-full py-4 text-lg font-bold"
+              >
+                {nextPodiumRank}位を発表
+              </button>
+            ) : (
+              <p className="mt-6 flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                ルームマスターが{nextPodiumRank}位を発表するのを待っています
+              </p>
+            )
+          ) : null}
         </>
       ) : (
         <>
           {winner && (
             <div className="event-card mt-8 rounded-2xl p-5 text-center">
               <Trophy className="mx-auto size-10 text-accent" />
-              <p className="mt-3 text-sm font-bold text-accent">優勝チーム</p>
+              <p className="mt-3 text-sm font-bold text-accent">1位チーム</p>
               <p className="mt-1 text-2xl font-black">{winner.name}</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {teamXp(winner)} XP · {winner.members.length}人
@@ -398,7 +459,7 @@ function Drumroll({
         ))}
       </div>
       <p className="mt-5 text-sm font-semibold text-muted-foreground">
-        {grand ? "最終結果を発表します" : "優勝チームを発表します"}
+        {grand ? "最終結果を発表します" : "1位チームを発表します"}
       </p>
       <button
         type="button"
@@ -426,12 +487,15 @@ function RankRow({
   isMine,
   room,
   xp,
+  championLabel,
 }: {
   team: TeamStatus;
   index: number;
   isMine: boolean;
   room: Room;
   xp: number;
+  /** What 1st place is called on this list — "1位" for each difficulty's own ranking, "優勝" only for the final one. */
+  championLabel?: string;
 }) {
   return (
     <li
@@ -451,7 +515,7 @@ function RankRow({
         </span>
         <div className="min-w-0">
           <p className="truncate font-bold">
-            {rankLabel(index)} {team.name}
+            {rankLabel(index, championLabel)} {team.name}
             {isMine ? "（自分）" : ""}
           </p>
           <p className="truncate text-xs text-muted-foreground">

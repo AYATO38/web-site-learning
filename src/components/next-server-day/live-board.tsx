@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
-import { DIFFICULTY_LABELS, QUESTION_TIME_LIMIT_LABEL } from "@/lib/next-server-day";
+import { DIFFICULTY_LABELS, questionTimeLimitLabel } from "@/lib/next-server-day";
 import {
+  lockedDifficulty,
   memberStatusLabel,
   type Room,
   type TeamMember,
@@ -23,6 +24,7 @@ export function LiveBoard({
   myTeam?: string | null;
   myMemberId?: string | null;
 }) {
+  const difficulty = lockedDifficulty(room);
   return (
     <section className="event-card rounded-2xl p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -36,9 +38,11 @@ export function LiveBoard({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <p className="rounded-md bg-muted px-2.5 py-1 text-xs font-bold text-foreground">
-            {QUESTION_TIME_LIMIT_LABEL}
-          </p>
+          {difficulty ? (
+            <p className="rounded-md bg-muted px-2.5 py-1 text-xs font-bold text-foreground">
+              {questionTimeLimitLabel(difficulty)}
+            </p>
+          ) : null}
           <p className="rounded-md bg-accent-soft px-2.5 py-1 font-mono text-xs font-bold tracking-[0.18em] text-accent">
             {room.id}
           </p>
