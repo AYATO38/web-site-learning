@@ -1,7 +1,7 @@
 import type { NextServerDayQuestion } from "@/lib/next-server-day";
 
 const jsMemberPartA = `【A】
-card.innerHTML = \`<h3>member.name</h3><p>{member.role}</p>\`;`;
+card.innerHTML = \`<h3>\${member.name}</h3><p>\${member.role}</p>\`;`;
 const jsMemberPartB = `【B】
 const list = document.getElementById("memberList");`;
 const jsMemberPartC = `【C】
@@ -13,7 +13,7 @@ const jsMemberPartD = `【D】
 members.forEach((member) => {
   const card = document.createElement("div");`;
 const jsMemberPartE = `【E】
-  member.appendChild(card);
+  list.appendChild(card);
 });`;
 
 export const nsdQuestions: NextServerDayQuestion[] = [
@@ -416,7 +416,7 @@ const list = document.getElementById("memberList");
 
 members.forEach((member) => {
   const card = document.createElement("div");
-  card.innerHTML = \`<h3>member.name</h3><p>{member.role}</p>\`;
+  card.innerHTML = \`<h3>\${member.name}</h3><p>\${member.role}</p>\`;
   member.appendChild(card);
 });`,
     solution: `const members = [
@@ -428,7 +428,7 @@ const list = document.getElementById("memberList");
 
 members.forEach((member) => {
   const card = document.createElement("div");
-  card.innerHTML = \`<h3>member.name</h3><p>{member.role}</p>\`;
+  card.innerHTML = \`<h3>\${member.name}</h3><p>\${member.role}</p>\`;
   list.appendChild(card);
 });`,
     language: "js",

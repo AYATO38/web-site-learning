@@ -8,14 +8,14 @@ import {
   Home,
   PlayCircle,
   User,
-  Sparkles,
+  FileText,
   Gamepad,
   type LucideIcon,
 } from "lucide-react";
 
 const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/video", label: "講義動画", icon: PlayCircle },
-  { href: "/next-server-day", label: "次サバDAY", icon: Sparkles },
+  { href: "/video", label: "講義資料", icon: FileText },
   { href: "/", label: "ホーム", icon: Home },
   { href: "/game", label: "ゲーム", icon: Gamepad },
   { href: "/account", label: "アカウント", icon: User },
