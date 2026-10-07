@@ -10,7 +10,7 @@ export default function GamePage() {
           ゲームで遊ぼう
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          タイピングゲームやコード間違い探しを準備中です
+          遊びたいゲームを選んでください
         </p>
       </header>
 
@@ -33,20 +33,23 @@ export default function GamePage() {
           </div>
         </Link>
 
-        <article className="glass-card flex flex-col items-start gap-4 rounded-[1.4rem] p-6">
+        <Link
+          href="/game/typing"
+          className="glass-card flex flex-col items-start gap-4 rounded-[1.4rem] p-6 transition-transform hover:-translate-y-0.5"
+        >
           <span className="rounded-full bg-accent-soft p-3 text-accent">
             <Gamepad className="size-6" />
           </span>
           <div>
-            <h2 className="text-lg font-black tracking-tight">タイピングゲーム</h2>
+            <h2 className="text-lg font-black tracking-tight">タイピング練習</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              指を鍛えて正確にタイピングしよう
+              寿司打などのタイピングゲームで指を鍛えよう
             </p>
           </div>
-          <div className="rounded-full bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">
-            準備中
+          <div className="rounded-full bg-accent px-3 py-1 text-xs font-bold text-white">
+            選ぶ
           </div>
-        </article>
+        </Link>
 
         <article className="glass-card flex flex-col items-start gap-4 rounded-[1.4rem] p-6">
           <span className="rounded-full bg-accent-soft p-3 text-accent">

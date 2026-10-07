@@ -15,7 +15,7 @@ import {
 
 const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/video", label: "講義動画", icon: PlayCircle },
-  { href: "/video", label: "講義資料", icon: FileText },
+  { href: "/materials", label: "講義資料", icon: FileText },
   { href: "/", label: "ホーム", icon: Home },
   { href: "/game", label: "ゲーム", icon: Gamepad },
   { href: "/account", label: "アカウント", icon: User },

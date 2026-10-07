@@ -123,6 +123,14 @@ export async function ensureDb(): Promise<Sql> {
           updated_at BIGINT NOT NULL
         )
       `);
+      await sql.query(`
+        CREATE TABLE IF NOT EXISTS materials (
+          id TEXT PRIMARY KEY,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          data JSONB NOT NULL,
+          updated_at BIGINT NOT NULL
+        )
+      `);
     })();
   }
   await schemaReady;
