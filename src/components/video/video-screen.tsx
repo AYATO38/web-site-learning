@@ -42,17 +42,8 @@ function useCompleted() {
   return completed;
 }
 
-function VideoCatalog({
-  lessons,
-  canEdit,
-  onChanged,
-}: {
-  lessons: Lesson[];
-  canEdit: boolean;
-  onChanged: () => void;
-}) {
+function VideoCatalog({ lessons }: { lessons: Lesson[] }) {
   const completed = useCompleted();
-  const [editing, setEditing] = useState(false);
 
   return (
     <div className="mx-auto w-full max-w-lg flex-1 px-4 pb-36 pt-8">
@@ -61,21 +52,6 @@ function VideoCatalog({
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         フェーズを選んでください。動画を視聴完了すると、そのレッスンのクイズが開きます。
       </p>
-
-      {canEdit ? (
-        <button
-          type="button"
-          onClick={() => setEditing((open) => !open)}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold text-muted-foreground"
-        >
-          <PencilLine className="size-4" />
-          {editing ? "編集を閉じる" : "動画を編集"}
-        </button>
-      ) : null}
-
-      {canEdit && editing ? (
-        <LessonEditor lessons={lessons} onChanged={onChanged} />
-      ) : null}
 
       <div className="mt-8 grid grid-cols-2 gap-3">
         {lessonPhases.map((phase) => {
@@ -101,8 +77,19 @@ function VideoCatalog({
   );
 }
 
-function PhaseLessons({ phase, lessons }: { phase: LessonPhase; lessons: Lesson[] }) {
+function PhaseLessons({
+  phase,
+  lessons,
+  canEdit,
+  onChanged,
+}: {
+  phase: LessonPhase;
+  lessons: Lesson[];
+  canEdit: boolean;
+  onChanged: () => void;
+}) {
   const completed = useCompleted();
+  const [editing, setEditing] = useState(false);
   const weeks = weeksInPhase(lessons, phase);
 
   return (
@@ -119,6 +106,25 @@ function PhaseLessons({ phase, lessons }: { phase: LessonPhase; lessons: Lesson[
       <h1 className="mt-1 text-2xl font-black tracking-tight">
         {phaseLabel(phase)} の講義動画
       </h1>
+
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={() => setEditing((open) => !open)}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold text-muted-foreground"
+        >
+          <PencilLine className="size-4" />
+          {editing ? "編集を閉じる" : `${phaseLabel(phase)} の動画を編集`}
+        </button>
+      ) : null}
+
+      {canEdit && editing ? (
+        <LessonEditor
+          phase={phase}
+          lessons={lessonsInPhase(lessons, phase)}
+          onChanged={onChanged}
+        />
+      ) : null}
 
       {weeks.length === 0 ? (
         <p className="mt-8 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -269,11 +275,18 @@ function VideoContent() {
   const lesson = getLesson(lessons, searchParams.get("lesson"));
   const phase = Number(searchParams.get("phase"));
   if (!lesson && isLessonPhase(phase)) {
-    return <PhaseLessons phase={phase} lessons={lessons} />;
+    return (
+      <PhaseLessons
+        phase={phase}
+        lessons={lessons}
+        canEdit={canEdit}
+        onChanged={() => void refresh()}
+      />
+    );
   }
   if (!lesson) {
     return (
-      <VideoCatalog lessons={lessons} canEdit={canEdit} onChanged={() => void refresh()} />
+      <VideoCatalog lessons={lessons} />
     );
   }
   return <VideoPlayer lesson={lesson} lessons={lessons} />;

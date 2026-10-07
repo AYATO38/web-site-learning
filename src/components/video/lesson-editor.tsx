@@ -201,15 +201,23 @@ function LessonRow({
   );
 }
 
-function NewLessonForm({ onChanged }: { onChanged: () => void }) {
+function NewLessonForm({
+  phase,
+  nextWeek,
+  onChanged,
+}: {
+  phase: LessonPhase;
+  nextWeek: number;
+  onChanged: () => void;
+}) {
   const [id, setId] = useState("");
   const [fields, setFields] = useState<Fields>({
     title: "",
     description: "",
     duration: "",
     videoUrl: "",
-    phase: 1,
-    week: 1,
+    phase,
+    week: nextWeek,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -253,13 +261,17 @@ function NewLessonForm({ onChanged }: { onChanged: () => void }) {
   );
 }
 
+/** Edits one phase's videos; moving a lesson to another phase is done from its phase field. */
 export function LessonEditor({
+  phase,
   lessons,
   onChanged,
 }: {
+  phase: LessonPhase;
   lessons: Lesson[];
   onChanged: () => void;
 }) {
+  const lastWeek = Math.max(0, ...lessons.map((lesson) => lesson.week));
   async function move(index: number, direction: -1 | 1) {
     const other = lessons[index + direction];
     if (!other) return;
@@ -273,7 +285,9 @@ export function LessonEditor({
 
   return (
     <section className="mt-6 space-y-4">
-      <p className="text-sm font-bold text-muted-foreground">講義動画の編集</p>
+      <p className="text-sm font-bold text-muted-foreground">
+        {phaseLabel(phase)} の講義動画の編集
+      </p>
       <ul className="space-y-4">
         {lessons.map((lesson, index) => (
           <LessonRow
@@ -286,7 +300,12 @@ export function LessonEditor({
           />
         ))}
       </ul>
-      <NewLessonForm onChanged={onChanged} />
+      <NewLessonForm
+        key={phase}
+        phase={phase}
+        nextWeek={Math.min(Math.max(lastWeek, 1), MAX_LESSON_WEEK)}
+        onChanged={onChanged}
+      />
     </section>
   );
 }
