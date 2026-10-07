@@ -216,6 +216,16 @@ export function markLessonComplete(lessonId: string): void {
   }
 }
 
+export function unmarkLessonComplete(lessonId: string): void {
+  const completed = getCompletedLessons();
+  if (completed.includes(lessonId)) {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(completed.filter((id) => id !== lessonId)),
+    );
+  }
+}
+
 export function isLessonComplete(lessonId: string): boolean {
   return getCompletedLessons().includes(lessonId);
 }

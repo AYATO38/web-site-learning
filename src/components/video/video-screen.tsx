@@ -6,11 +6,11 @@ import Link from "next/link";
 import {
   getCompletedLessons,
   getLesson,
-  isLessonComplete,
   isLessonPhase,
   lessonPhases,
   lessonsInPhase,
   markLessonComplete,
+  unmarkLessonComplete,
   phaseLabel,
   weekLabel,
   weeksInPhase,
@@ -20,7 +20,7 @@ import {
 import { useLessons } from "@/lib/use-lessons";
 import { LessonCard } from "@/components/home/lesson-card";
 import { LessonEditor } from "@/components/video/lesson-editor";
-import { ArrowLeft, CheckCircle2, PencilLine, PlayCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, PencilLine, PlayCircle, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function useCompleted() {
@@ -180,6 +180,7 @@ function OtherLessonRow({
         )}
       />
       <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold text-accent">{weekLabel(lesson.week)}</p>
         <p className="truncate text-sm font-bold">{lesson.title}</p>
         <p className="text-xs text-muted-foreground">{lesson.duration}</p>
       </div>
@@ -192,15 +193,18 @@ function OtherLessonRow({
 
 function VideoPlayer({ lesson, lessons }: { lesson: Lesson; lessons: Lesson[] }) {
   const completedIds = useCompleted();
-  const [completed, setCompleted] = useState(false);
-
-  useEffect(() => {
-    setCompleted(isLessonComplete(lesson.id));
-  }, [lesson.id]);
+  const completed = completedIds.includes(lesson.id);
+  const phaseLessons = lessonsInPhase(lessons, lesson.phase).sort(
+    (a, b) => a.week - b.week,
+  );
 
   function handleComplete() {
     markLessonComplete(lesson.id);
-    setCompleted(true);
+    window.dispatchEvent(new Event("lesson-complete"));
+  }
+
+  function handleUndo() {
+    unmarkLessonComplete(lesson.id);
     window.dispatchEvent(new Event("lesson-complete"));
   }
 
@@ -236,17 +240,35 @@ function VideoPlayer({ lesson, lessons }: { lesson: Lesson; lessons: Lesson[] })
 
       <div className="mt-6 rounded-2xl border border-border bg-surface-elevated p-5">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          動画を視聴したら「視聴完了」を押してください。クイズが解放されます。
+          {completed
+            ? "視聴完了済みです。まだ見終わっていなかったときは取り消せます。"
+            : "動画を視聴したら「視聴完了」を押してください。クイズが解放されます。"}
         </p>
-        <button
-          type="button"
-          onClick={handleComplete}
-          disabled={completed}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3.5 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-default disabled:bg-muted disabled:text-muted-foreground"
-        >
-          <CheckCircle2 className="size-4" />
-          {completed ? "視聴完了済み" : "視聴完了"}
-        </button>
+        {completed ? (
+          <div className="mt-4 flex gap-2">
+            <p className="flex flex-1 items-center justify-center gap-2 rounded-full bg-muted py-3.5 text-sm font-semibold text-muted-foreground">
+              <CheckCircle2 className="size-4" />
+              視聴完了済み
+            </p>
+            <button
+              type="button"
+              onClick={handleUndo}
+              className="flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-3.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+            >
+              <Undo2 className="size-4" />
+              取り消す
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleComplete}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-3.5 text-sm font-semibold text-white hover:bg-accent-dark"
+          >
+            <CheckCircle2 className="size-4" />
+            視聴完了
+          </button>
+        )}
       </div>
 
       <section className="mt-8">
@@ -254,7 +276,7 @@ function VideoPlayer({ lesson, lessons }: { lesson: Lesson; lessons: Lesson[] })
           {phaseLabel(lesson.phase)} のほかの講義動画
         </h2>
         <div className="space-y-2">
-          {lessonsInPhase(lessons, lesson.phase).map((item) => (
+          {phaseLessons.map((item) => (
             <OtherLessonRow
               key={item.id}
               lesson={item}
