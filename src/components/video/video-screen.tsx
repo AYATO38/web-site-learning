@@ -7,9 +7,11 @@ import {
   getCompletedLessons,
   getLesson,
   isLessonComplete,
-  lessonCategories,
-  lessonsInCategory,
+  lessonPhases,
   markLessonComplete,
+  phaseLabel,
+  weekLabel,
+  weeksInPhase,
   type Lesson,
 } from "@/lib/lessons";
 import { useLessons } from "@/lib/use-lessons";
@@ -72,23 +74,34 @@ function VideoCatalog({
         <LessonEditor lessons={lessons} onChanged={onChanged} />
       ) : null}
 
-      <div className="mt-8 space-y-8">
-        {lessonCategories.map((category) => {
-          const items = lessonsInCategory(lessons, category);
-          if (items.length === 0) return null;
+      <div className="mt-8 space-y-10">
+        {lessonPhases.map((phase) => {
+          const weeks = weeksInPhase(lessons, phase);
+          if (weeks.length === 0) return null;
           return (
-            <section key={category}>
-              <h2 className="mb-3 text-sm font-bold text-muted-foreground">
-                {category}
+            <section key={phase}>
+              <h2 className="mb-4 flex items-center gap-2 text-lg font-black tracking-tight">
+                <span className="rounded-full bg-accent px-3 py-0.5 text-sm text-white">
+                  {phaseLabel(phase)}
+                </span>
               </h2>
-              <div className="space-y-4">
-                {items.map((lesson) => (
-                  <LessonCard
-                    key={lesson.id}
-                    lesson={lesson}
-                    index={lessons.findIndex((item) => item.id === lesson.id)}
-                    completed={completed.includes(lesson.id)}
-                  />
+              <div className="space-y-6">
+                {weeks.map(({ week, lessons: items }) => (
+                  <div key={week}>
+                    <h3 className="mb-3 text-sm font-bold text-muted-foreground">
+                      {weekLabel(week)}
+                    </h3>
+                    <div className="space-y-4">
+                      {items.map((lesson) => (
+                        <LessonCard
+                          key={lesson.id}
+                          lesson={lesson}
+                          index={lessons.findIndex((item) => item.id === lesson.id)}
+                          completed={completed.includes(lesson.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
@@ -159,7 +172,9 @@ function VideoPlayer({ lesson, lessons }: { lesson: Lesson; lessons: Lesson[] })
         一覧に戻る
       </Link>
 
-      <p className="section-en">{lesson.category}</p>
+      <p className="section-en">
+        {phaseLabel(lesson.phase)} · {weekLabel(lesson.week)}
+      </p>
       <h1 className="mt-1 text-xl font-black tracking-tight text-foreground">
         {lesson.title}
       </h1>

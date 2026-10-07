@@ -1,5 +1,4 @@
-import type { LessonCategory } from "@/lib/lessons";
-import { materialCategories, type Material } from "@/lib/materials";
+import { materialCategories, type Material, type MaterialCategory } from "@/lib/materials";
 
 export type MaterialValidation =
   | { ok: true; material: Material }
@@ -34,7 +33,7 @@ export function validateMaterialInput(input: unknown): MaterialValidation {
     return { ok: false, error: "資料URLは https:// で始まるURLにしてください" };
   }
 
-  const category = text(data.category) as LessonCategory;
+  const category = text(data.category) as MaterialCategory;
   if (!materialCategories.includes(category)) {
     return { ok: false, error: "カテゴリが正しくありません" };
   }

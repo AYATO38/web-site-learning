@@ -11,11 +11,11 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import type { LessonCategory } from "@/lib/lessons";
 import {
   materialCategories,
   materialsInCategory,
   type Material,
+  type MaterialCategory,
 } from "@/lib/materials";
 
 type MaterialsState = { materials: Material[]; canEdit: boolean };
@@ -99,7 +99,7 @@ function FieldInputs({
         className={inputClass}
         value={value.category}
         onChange={(event) =>
-          onChange({ ...value, category: event.target.value as LessonCategory })
+          onChange({ ...value, category: event.target.value as MaterialCategory })
         }
         aria-label="カテゴリ"
       >

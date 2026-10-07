@@ -1,4 +1,7 @@
-export type LessonCategory = "基礎" | "見た目" | "動き" | "チーム開発";
+/** The course runs in four phases (PH1〜PH4), each split into weeks. */
+export const lessonPhases = [1, 2, 3, 4] as const;
+export type LessonPhase = (typeof lessonPhases)[number];
+export const MAX_LESSON_WEEK = 20;
 
 export type Lesson = {
   id: string;
@@ -6,15 +9,68 @@ export type Lesson = {
   description: string;
   duration: string;
   videoUrl: string;
-  category: LessonCategory;
+  phase: LessonPhase;
+  week: number;
 };
 
-export const lessonCategories: LessonCategory[] = [
-  "基礎",
-  "見た目",
-  "動き",
-  "チーム開発",
-];
+export function phaseLabel(phase: LessonPhase): string {
+  return `PH${phase}`;
+}
+
+export function weekLabel(week: number): string {
+  return `Week ${week}`;
+}
+
+export function isLessonPhase(value: unknown): value is LessonPhase {
+  return lessonPhases.includes(value as LessonPhase);
+}
+
+function isLessonWeek(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= MAX_LESSON_WEEK
+  );
+}
+
+/** Lessons saved before phases existed carried a category instead; it picks the phase. */
+const LEGACY_CATEGORY_PHASE: Record<string, LessonPhase> = {
+  基礎: 1,
+  見た目: 2,
+  動き: 3,
+  チーム開発: 4,
+};
+
+type LegacyLesson = Omit<Lesson, "phase" | "week"> & {
+  phase?: unknown;
+  week?: unknown;
+  category?: unknown;
+};
+
+/**
+ * Fills in phase/week for lessons stored under the old category scheme: the
+ * category picks the phase and the lesson's position within that phase picks
+ * the week, so the existing order carries over. Lessons that already have
+ * both pass through untouched.
+ */
+export function withPhaseAndWeek<T extends LegacyLesson>(
+  list: T[],
+): (Omit<T, "phase" | "week" | "category"> & Pick<Lesson, "phase" | "week">)[] {
+  const seenPerPhase = new Map<LessonPhase, number>();
+  return list.map((item) => {
+    const { category, phase: rawPhase, week: rawWeek, ...rest } = item;
+    const phase = isLessonPhase(rawPhase)
+      ? rawPhase
+      : (LEGACY_CATEGORY_PHASE[String(category)] ?? 1);
+    const position = (seenPerPhase.get(phase) ?? 0) + 1;
+    seenPerPhase.set(phase, position);
+    const week = isLessonWeek(rawWeek)
+      ? rawWeek
+      : Math.min(position, MAX_LESSON_WEEK);
+    return { ...rest, phase, week };
+  });
+}
 
 /** The bundled starting list — seeds the database once, and shows instantly before the live list loads. */
 export const defaultLessons: Lesson[] = [
@@ -24,7 +80,8 @@ export const defaultLessons: Lesson[] = [
     description: "ページの骨格と、色や余白などの基本を学びます",
     duration: "約12分",
     videoUrl: "https://www.youtube.com/embed/qz0aGYrrlhU",
-    category: "基礎",
+    phase: 1,
+    week: 1,
   },
   {
     id: "web-basics",
@@ -32,7 +89,8 @@ export const defaultLessons: Lesson[] = [
     description: "ブラウザがページを表示するまでの流れをつかみます",
     duration: "約5分",
     videoUrl: "https://www.youtube.com/embed/7_LPdttKXPc",
-    category: "基礎",
+    phase: 1,
+    week: 2,
   },
   {
     id: "css",
@@ -40,7 +98,8 @@ export const defaultLessons: Lesson[] = [
     description: "文字色・サイズ・余白など、見た目の指定を学びます",
     duration: "約80分",
     videoUrl: "https://www.youtube.com/embed/yfoY53QXEnI",
-    category: "見た目",
+    phase: 2,
+    week: 1,
   },
   {
     id: "flexbox",
@@ -48,7 +107,8 @@ export const defaultLessons: Lesson[] = [
     description: "ボタンやカードを横並び・中央揃えにする方法です",
     duration: "約20分",
     videoUrl: "https://www.youtube.com/embed/JJSoEo8JSrs",
-    category: "見た目",
+    phase: 2,
+    week: 2,
   },
   {
     id: "javascript",
@@ -56,7 +116,8 @@ export const defaultLessons: Lesson[] = [
     description: "変数・条件分岐・配列など、動きをつける基本です",
     duration: "約18分",
     videoUrl: "https://www.youtube.com/embed/W6NZfCO5SIk",
-    category: "動き",
+    phase: 3,
+    week: 1,
   },
   {
     id: "react",
@@ -64,7 +125,8 @@ export const defaultLessons: Lesson[] = [
     description: "画面を部品に分けて、状態つきのUIを作ります",
     duration: "約90分",
     videoUrl: "https://www.youtube.com/embed/w7ejDZ8STwI",
-    category: "動き",
+    phase: 3,
+    week: 2,
   },
   {
     id: "git",
@@ -72,7 +134,8 @@ export const defaultLessons: Lesson[] = [
     description: "変更の記録と、チームでコードを共有する流れです",
     duration: "約15分",
     videoUrl: "https://www.youtube.com/embed/RGOj5yH7evk",
-    category: "チーム開発",
+    phase: 4,
+    week: 1,
   },
   {
     id: "terminal",
@@ -80,7 +143,8 @@ export const defaultLessons: Lesson[] = [
     description: "フォルダ移動やファイル操作など、黒い画面の基本です",
     duration: "約45分",
     videoUrl: "https://www.youtube.com/embed/uwAqEzhyjtw",
-    category: "チーム開発",
+    phase: 4,
+    week: 2,
   },
 ];
 
@@ -92,11 +156,22 @@ export function getLesson(
   return list.find((lesson) => lesson.id === id);
 }
 
-export function lessonsInCategory(
+export function lessonsInPhase(list: Lesson[], phase: LessonPhase): Lesson[] {
+  return list.filter((lesson) => lesson.phase === phase);
+}
+
+/** A phase's lessons grouped by week, weeks ascending, list order kept within each week. */
+export function weeksInPhase(
   list: Lesson[],
-  category: LessonCategory,
-): Lesson[] {
-  return list.filter((lesson) => lesson.category === category);
+  phase: LessonPhase,
+): { week: number; lessons: Lesson[] }[] {
+  const byWeek = new Map<number, Lesson[]>();
+  for (const lesson of lessonsInPhase(list, phase)) {
+    byWeek.set(lesson.week, [...(byWeek.get(lesson.week) ?? []), lesson]);
+  }
+  return [...byWeek.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([week, lessons]) => ({ week, lessons }));
 }
 
 const STORAGE_KEY = "posse-lesson-progress";
@@ -143,7 +218,7 @@ export type LearnerProgress = {
   nextTitle: string | null;
   remainingToNext: number;
   categories: {
-    name: LessonCategory;
+    name: string;
     completed: number;
     total: number;
   }[];
@@ -172,10 +247,10 @@ export function getLearnerProgress(
     remainingToNext: next
       ? Math.max(next.minCompleted - completed, 0)
       : 0,
-    categories: lessonCategories.map((name) => {
-      const items = lessonsInCategory(list, name);
+    categories: lessonPhases.map((phase) => {
+      const items = lessonsInPhase(list, phase);
       return {
-        name,
+        name: phaseLabel(phase),
         completed: items.filter((lesson) => completedIds.includes(lesson.id))
           .length,
         total: items.length,

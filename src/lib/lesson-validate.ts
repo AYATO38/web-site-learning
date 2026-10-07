@@ -1,4 +1,4 @@
-import { lessonCategories, type Lesson, type LessonCategory } from "@/lib/lessons";
+import { isLessonPhase, MAX_LESSON_WEEK, type Lesson } from "@/lib/lessons";
 
 export type LessonValidation =
   | { ok: true; lesson: Lesson }
@@ -38,13 +38,18 @@ export function validateLessonInput(input: unknown): LessonValidation {
     return { ok: false, error: "動画URLは https:// で始まるURLにしてください" };
   }
 
-  const category = text(data.category) as LessonCategory;
-  if (!lessonCategories.includes(category)) {
-    return { ok: false, error: "カテゴリが正しくありません" };
+  const phase = Number(data.phase);
+  if (!isLessonPhase(phase)) {
+    return { ok: false, error: "フェーズは PH1〜PH4 から選んでください" };
+  }
+
+  const week = Number(data.week);
+  if (!Number.isInteger(week) || week < 1 || week > MAX_LESSON_WEEK) {
+    return { ok: false, error: `Week は 1〜${MAX_LESSON_WEEK} の数字にしてください` };
   }
 
   return {
     ok: true,
-    lesson: { id, title, description, duration, videoUrl, category },
+    lesson: { id, title, description, duration, videoUrl, phase, week },
   };
 }

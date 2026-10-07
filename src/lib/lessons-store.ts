@@ -1,5 +1,5 @@
 import { ensureDb } from "@/lib/db";
-import { defaultLessons, type Lesson } from "@/lib/lessons";
+import { defaultLessons, withPhaseAndWeek, type Lesson } from "@/lib/lessons";
 
 export type StoredLesson = Lesson & { sortOrder: number; updatedAt: number };
 
@@ -54,7 +54,29 @@ export async function listLessons(): Promise<StoredLesson[]> {
     FROM lessons
     ORDER BY sort_order
   `) as LessonRow[];
-  return rows.map(rowToLesson);
+  const stored = rows.map(rowToLesson);
+  const lessons = withPhaseAndWeek(stored);
+
+  // Rows saved under the old category scheme get their derived phase/week
+  // written back once, so later edits to neighbours can't reshuffle them.
+  const legacy = lessons.filter(
+    (lesson, index) => stored[index]?.phase !== lesson.phase || stored[index]?.week !== lesson.week,
+  );
+  for (const lesson of legacy) {
+    const data: Lesson = {
+      id: lesson.id,
+      title: lesson.title,
+      description: lesson.description,
+      duration: lesson.duration,
+      videoUrl: lesson.videoUrl,
+      phase: lesson.phase,
+      week: lesson.week,
+    };
+    await sql`
+      UPDATE lessons SET data = ${JSON.stringify(data)}::jsonb WHERE id = ${lesson.id}
+    `;
+  }
+  return lessons;
 }
 
 export async function upsertLesson(lesson: Lesson): Promise<StoredLesson> {

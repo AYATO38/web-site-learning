@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from "lucide-react";
-import { lessonCategories, type Lesson, type LessonCategory } from "@/lib/lessons";
+import {
+  lessonPhases,
+  MAX_LESSON_WEEK,
+  phaseLabel,
+  type Lesson,
+  type LessonPhase,
+} from "@/lib/lessons";
 
 type Fields = Omit<Lesson, "id">;
 
@@ -48,7 +54,33 @@ function FieldInputs({
         placeholder="説明"
         aria-label="説明"
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
+        <select
+          className={inputClass}
+          value={value.phase}
+          onChange={(event) =>
+            onChange({ ...value, phase: Number(event.target.value) as LessonPhase })
+          }
+          aria-label="フェーズ"
+        >
+          {lessonPhases.map((phase) => (
+            <option key={phase} value={phase}>
+              {phaseLabel(phase)}
+            </option>
+          ))}
+        </select>
+        <select
+          className={inputClass}
+          value={value.week}
+          onChange={(event) => onChange({ ...value, week: Number(event.target.value) })}
+          aria-label="Week"
+        >
+          {Array.from({ length: MAX_LESSON_WEEK }, (_, index) => index + 1).map((week) => (
+            <option key={week} value={week}>
+              Week {week}
+            </option>
+          ))}
+        </select>
         <input
           className={inputClass}
           value={value.duration}
@@ -56,20 +88,6 @@ function FieldInputs({
           placeholder="約12分"
           aria-label="時間"
         />
-        <select
-          className={inputClass}
-          value={value.category}
-          onChange={(event) =>
-            onChange({ ...value, category: event.target.value as LessonCategory })
-          }
-          aria-label="カテゴリ"
-        >
-          {lessonCategories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
       </div>
       <input
         className={inputClass}
@@ -100,7 +118,8 @@ function LessonRow({
     description: lesson.description,
     duration: lesson.duration,
     videoUrl: lesson.videoUrl,
-    category: lesson.category,
+    phase: lesson.phase,
+    week: lesson.week,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,7 +208,8 @@ function NewLessonForm({ onChanged }: { onChanged: () => void }) {
     description: "",
     duration: "",
     videoUrl: "",
-    category: lessonCategories[0],
+    phase: 1,
+    week: 1,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

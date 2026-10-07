@@ -1,4 +1,4 @@
-import { lessonCategories, type LessonCategory } from "@/lib/lessons";
+export type MaterialCategory = "基礎" | "見た目" | "動き" | "チーム開発";
 
 /** A lecture handout: slides, a doc, a PDF — anything reachable by a link. */
 export type Material = {
@@ -6,11 +6,11 @@ export type Material = {
   title: string;
   description: string;
   url: string;
-  category: LessonCategory;
+  category: MaterialCategory;
 };
 
-export const materialCategories = lessonCategories;
+export const materialCategories: MaterialCategory[] = ["基礎", "見た目", "動き", "チーム開発"];
 
-export function materialsInCategory(list: Material[], category: LessonCategory) {
+export function materialsInCategory(list: Material[], category: MaterialCategory) {
   return list.filter((material) => material.category === category);
 }
