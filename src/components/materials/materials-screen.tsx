@@ -165,7 +165,9 @@ function MaterialRow({
   return (
     <li className="rounded-2xl border border-border bg-surface-elevated p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="min-w-0 truncate font-mono text-xs text-muted-foreground">{material.id}</p>
+        <p className="min-w-0 truncate text-xs font-bold text-muted-foreground">
+          {material.category}
+        </p>
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
@@ -217,7 +219,6 @@ function MaterialRow({
 }
 
 function NewMaterialForm({ onChanged }: { onChanged: () => void }) {
-  const [id, setId] = useState("");
   const [fields, setFields] = useState<Fields>({
     title: "",
     description: "",
@@ -230,13 +231,12 @@ function NewMaterialForm({ onChanged }: { onChanged: () => void }) {
   async function add() {
     setBusy(true);
     setError(null);
-    const failure = await send("POST", "/api/materials", { material: { id, ...fields } });
+    const failure = await send("POST", "/api/materials", { material: fields });
     setBusy(false);
     if (failure) {
       setError(failure);
       return;
     }
-    setId("");
     setFields({ ...fields, title: "", description: "", url: "" });
     onChanged();
   }
@@ -244,13 +244,6 @@ function NewMaterialForm({ onChanged }: { onChanged: () => void }) {
   return (
     <div className="rounded-2xl border border-dashed border-border p-4">
       <p className="mb-3 text-sm font-bold">新しい資料を追加</p>
-      <input
-        className={`${inputClass} mb-2`}
-        value={id}
-        onChange={(event) => setId(event.target.value)}
-        placeholder="id（英小文字・数字・ハイフン）"
-        aria-label="id"
-      />
       <FieldInputs value={fields} onChange={setFields} />
       {error ? <p className="mt-3 text-sm font-semibold text-wrong">{error}</p> : null}
       <button

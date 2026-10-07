@@ -1,8 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth/session";
 import { isQuestionEditor } from "@/lib/nsd-question-admin";
 import { listMaterials, upsertMaterial } from "@/lib/materials-store";
 import { validateMaterialInput } from "@/lib/material-validate";
+
+function newId(prefix: string): string {
+  return `${prefix}-${randomUUID().slice(0, 8)}`;
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,7 +25,9 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as { material?: unknown } | null;
-  const result = validateMaterialInput(body?.material);
+  // New items get a generated id; editors never have to think one up.
+  const input = body?.material && typeof body.material === "object" ? body.material : {};
+  const result = validateMaterialInput({ ...input, id: newId("material") });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
@@ -28,7 +35,7 @@ export async function POST(request: Request) {
   const existing = await listMaterials();
   if (existing.some((material) => material.id === result.material.id)) {
     return NextResponse.json(
-      { error: "この id はすでに使われています。別の id にしてください" },
+      { error: "保存に失敗しました。もう一度「追加する」を押してください" },
       { status: 409 },
     );
   }
