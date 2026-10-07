@@ -142,7 +142,6 @@ function PhaseLessons({
                   <LessonCard
                     key={lesson.id}
                     lesson={lesson}
-                    index={lessons.findIndex((item) => item.id === lesson.id)}
                     completed={completed.includes(lesson.id)}
                   />
                 ))}

@@ -2,26 +2,27 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import type { Lesson } from "@/lib/lessons";
+import { phaseLabel, type Lesson } from "@/lib/lessons";
 import { Lock, PlayCircle, Zap } from "lucide-react";
 
 type LessonCardProps = {
   lesson: Lesson;
-  index: number;
   completed: boolean;
 };
 
-export function LessonCard({ lesson, index, completed }: LessonCardProps) {
+export function LessonCard({ lesson, completed }: LessonCardProps) {
   return (
     <article className="event-card overflow-visible rounded-2xl">
       <div className="flex items-start gap-4 p-5">
         <div
           className={cn(
-            "flex size-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold",
+            "flex size-12 shrink-0 flex-col items-center justify-center rounded-xl font-bold leading-none",
             completed ? "bg-accent text-white" : "bg-muted text-muted-foreground",
           )}
+          aria-label={`${phaseLabel(lesson.phase)} Week ${lesson.week}`}
         >
-          {String(index + 1).padStart(2, "0")}
+          <span className="text-[9px] tracking-wide opacity-80">{phaseLabel(lesson.phase)}</span>
+          <span className="mt-0.5 text-lg">{String(lesson.week).padStart(2, "0")}</span>
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="font-bold">{lesson.title}</h3>

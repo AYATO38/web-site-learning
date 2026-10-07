@@ -92,11 +92,10 @@ export function HomeScreen() {
           </Link>
         </div>
         <div className="space-y-4">
-          {lessons.slice(0, 3).map((lesson, index) => (
+          {lessons.slice(0, 3).map((lesson) => (
             <LessonCard
               key={lesson.id}
               lesson={lesson}
-              index={index}
               completed={completed.includes(lesson.id)}
             />
           ))}
