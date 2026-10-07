@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from "lucide-react";
 import {
+  clampWeek,
   lessonPhases,
-  MAX_LESSON_WEEK,
   phaseLabel,
+  weekLabel,
+  weeksOfPhase,
   type Lesson,
   type LessonPhase,
 } from "@/lib/lessons";
@@ -58,9 +60,10 @@ function FieldInputs({
         <select
           className={inputClass}
           value={value.phase}
-          onChange={(event) =>
-            onChange({ ...value, phase: Number(event.target.value) as LessonPhase })
-          }
+          onChange={(event) => {
+            const phase = Number(event.target.value) as LessonPhase;
+            onChange({ ...value, phase, week: clampWeek(phase, value.week) });
+          }}
           aria-label="フェーズ"
         >
           {lessonPhases.map((phase) => (
@@ -75,9 +78,9 @@ function FieldInputs({
           onChange={(event) => onChange({ ...value, week: Number(event.target.value) })}
           aria-label="Week"
         >
-          {Array.from({ length: MAX_LESSON_WEEK }, (_, index) => index + 1).map((week) => (
+          {weeksOfPhase(value.phase).map((week) => (
             <option key={week} value={week}>
-              Week {week}
+              {weekLabel(week)}
             </option>
           ))}
         </select>
@@ -271,7 +274,7 @@ export function LessonEditor({
   lessons: Lesson[];
   onChanged: () => void;
 }) {
-  const lastWeek = Math.max(0, ...lessons.map((lesson) => lesson.week));
+  const lastWeek = Math.max(weeksOfPhase(phase)[0], ...lessons.map((lesson) => lesson.week));
   async function move(index: number, direction: -1 | 1) {
     const other = lessons[index + direction];
     if (!other) return;
@@ -303,7 +306,7 @@ export function LessonEditor({
       <NewLessonForm
         key={phase}
         phase={phase}
-        nextWeek={Math.min(Math.max(lastWeek, 1), MAX_LESSON_WEEK)}
+        nextWeek={clampWeek(phase, lastWeek)}
         onChanged={onChanged}
       />
     </section>

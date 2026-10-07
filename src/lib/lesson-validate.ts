@@ -1,4 +1,4 @@
-import { isLessonPhase, MAX_LESSON_WEEK, type Lesson } from "@/lib/lessons";
+import { isLessonPhase, isWeekInPhase, weekRangeLabel, type Lesson } from "@/lib/lessons";
 
 export type LessonValidation =
   | { ok: true; lesson: Lesson }
@@ -44,8 +44,8 @@ export function validateLessonInput(input: unknown): LessonValidation {
   }
 
   const week = Number(data.week);
-  if (!Number.isInteger(week) || week < 1 || week > MAX_LESSON_WEEK) {
-    return { ok: false, error: `Week は 1〜${MAX_LESSON_WEEK} の数字にしてください` };
+  if (data.week === "" || data.week === null || !isWeekInPhase(phase, week)) {
+    return { ok: false, error: `PH${phase} の Week は ${weekRangeLabel(phase)} から選んでください` };
   }
 
   return {

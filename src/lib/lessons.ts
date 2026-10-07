@@ -1,7 +1,38 @@
 /** The course runs in four phases (PH1〜PH4), each split into weeks. */
 export const lessonPhases = [1, 2, 3, 4] as const;
 export type LessonPhase = (typeof lessonPhases)[number];
-export const MAX_LESSON_WEEK = 20;
+
+/**
+ * Each phase's week range. PH1 runs Week 00〜16; the other phases keep a
+ * provisional 1〜20 until their real schedules are decided.
+ */
+const PHASE_WEEKS: Record<LessonPhase, { first: number; last: number }> = {
+  1: { first: 0, last: 16 },
+  2: { first: 1, last: 20 },
+  3: { first: 1, last: 20 },
+  4: { first: 1, last: 20 },
+};
+
+export function weeksOfPhase(phase: LessonPhase): number[] {
+  const { first, last } = PHASE_WEEKS[phase];
+  return Array.from({ length: last - first + 1 }, (_, index) => first + index);
+}
+
+export function weekRangeLabel(phase: LessonPhase): string {
+  const { first, last } = PHASE_WEEKS[phase];
+  return `${weekLabel(first)}〜${weekLabel(last)}`;
+}
+
+export function isWeekInPhase(phase: LessonPhase, week: unknown): week is number {
+  const { first, last } = PHASE_WEEKS[phase];
+  return typeof week === "number" && Number.isInteger(week) && week >= first && week <= last;
+}
+
+/** Pulls a week into the phase's range, e.g. when a lesson moves to another phase. */
+export function clampWeek(phase: LessonPhase, week: number): number {
+  const { first, last } = PHASE_WEEKS[phase];
+  return Math.min(Math.max(week, first), last);
+}
 
 export type Lesson = {
   id: string;
@@ -18,20 +49,11 @@ export function phaseLabel(phase: LessonPhase): string {
 }
 
 export function weekLabel(week: number): string {
-  return `Week ${week}`;
+  return `Week ${String(week).padStart(2, "0")}`;
 }
 
 export function isLessonPhase(value: unknown): value is LessonPhase {
   return lessonPhases.includes(value as LessonPhase);
-}
-
-function isLessonWeek(value: unknown): value is number {
-  return (
-    typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 1 &&
-    value <= MAX_LESSON_WEEK
-  );
 }
 
 /** Lessons saved before phases existed carried a category instead; it picks the phase. */
@@ -65,9 +87,7 @@ export function withPhaseAndWeek<T extends LegacyLesson>(
       : (LEGACY_CATEGORY_PHASE[String(category)] ?? 1);
     const position = (seenPerPhase.get(phase) ?? 0) + 1;
     seenPerPhase.set(phase, position);
-    const week = isLessonWeek(rawWeek)
-      ? rawWeek
-      : Math.min(position, MAX_LESSON_WEEK);
+    const week = isWeekInPhase(phase, rawWeek) ? rawWeek : clampWeek(phase, position);
     return { ...rest, phase, week };
   });
 }
