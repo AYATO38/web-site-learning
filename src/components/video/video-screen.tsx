@@ -8,13 +8,14 @@ import {
   getLesson,
   isLessonComplete,
   lessonCategories,
-  lessons,
   lessonsInCategory,
   markLessonComplete,
   type Lesson,
 } from "@/lib/lessons";
+import { useLessons } from "@/lib/use-lessons";
 import { LessonCard } from "@/components/home/lesson-card";
-import { ArrowLeft, CheckCircle2, PlayCircle } from "lucide-react";
+import { LessonEditor } from "@/components/video/lesson-editor";
+import { ArrowLeft, CheckCircle2, PencilLine, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function useCompleted() {
@@ -36,8 +37,17 @@ function useCompleted() {
   return completed;
 }
 
-function VideoCatalog() {
+function VideoCatalog({
+  lessons,
+  canEdit,
+  onChanged,
+}: {
+  lessons: Lesson[];
+  canEdit: boolean;
+  onChanged: () => void;
+}) {
   const completed = useCompleted();
+  const [editing, setEditing] = useState(false);
 
   return (
     <div className="mx-auto w-full max-w-lg flex-1 px-4 pb-36 pt-8">
@@ -47,9 +57,24 @@ function VideoCatalog() {
         見たい動画を選んでください。視聴完了すると、そのレッスンのクイズが開きます。
       </p>
 
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={() => setEditing((open) => !open)}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold text-muted-foreground"
+        >
+          <PencilLine className="size-4" />
+          {editing ? "編集を閉じる" : "動画を編集"}
+        </button>
+      ) : null}
+
+      {canEdit && editing ? (
+        <LessonEditor lessons={lessons} onChanged={onChanged} />
+      ) : null}
+
       <div className="mt-8 space-y-8">
         {lessonCategories.map((category) => {
-          const items = lessonsInCategory(category);
+          const items = lessonsInCategory(lessons, category);
           if (items.length === 0) return null;
           return (
             <section key={category}>
@@ -110,7 +135,7 @@ function OtherLessonRow({
   );
 }
 
-function VideoPlayer({ lesson }: { lesson: Lesson }) {
+function VideoPlayer({ lesson, lessons }: { lesson: Lesson; lessons: Lesson[] }) {
   const completedIds = useCompleted();
   const [completed, setCompleted] = useState(false);
 
@@ -188,9 +213,14 @@ function VideoPlayer({ lesson }: { lesson: Lesson }) {
 
 function VideoContent() {
   const searchParams = useSearchParams();
-  const lesson = getLesson(searchParams.get("lesson"));
-  if (!lesson) return <VideoCatalog />;
-  return <VideoPlayer lesson={lesson} />;
+  const { lessons, canEdit, refresh } = useLessons();
+  const lesson = getLesson(lessons, searchParams.get("lesson"));
+  if (!lesson) {
+    return (
+      <VideoCatalog lessons={lessons} canEdit={canEdit} onChanged={() => void refresh()} />
+    );
+  }
+  return <VideoPlayer lesson={lesson} lessons={lessons} />;
 }
 
 export function VideoScreen() {

@@ -4,21 +4,32 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Quiz } from "@/components/quiz";
-import { isLessonComplete, lessons } from "@/lib/lessons";
+import { isLessonComplete } from "@/lib/lessons";
+import { useLessons } from "@/lib/use-lessons";
 import { getQuestionsForLesson } from "@/lib/questions";
 import { Lock } from "lucide-react";
 
 function QuizGate() {
   const searchParams = useSearchParams();
-  const lessonId = searchParams.get("lesson") ?? lessons[0].id;
+  const { lessons } = useLessons();
+  const lessonId = searchParams.get("lesson") ?? lessons[0]?.id;
   const lesson = lessons.find((l) => l.id === lessonId) ?? lessons[0];
   const [unlocked, setUnlocked] = useState(false);
   const [ready, setReady] = useState(false);
 
+  const lessonKey = lesson?.id ?? null;
   useEffect(() => {
-    setUnlocked(isLessonComplete(lesson.id));
+    setUnlocked(lessonKey ? isLessonComplete(lessonKey) : false);
     setReady(true);
-  }, [lesson.id]);
+  }, [lessonKey]);
+
+  if (!lesson) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center px-6 text-center text-sm text-muted-foreground">
+        講義動画がまだありません。
+      </div>
+    );
+  }
 
   if (!ready) {
     return (

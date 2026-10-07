@@ -1,8 +1,14 @@
-import { getLearnerProgress } from "@/lib/lessons";
+import { getLearnerProgress, type Lesson } from "@/lib/lessons";
 import { cn } from "@/lib/utils";
 
-export function ProgressPanel({ completedIds }: { completedIds: string[] }) {
-  const progress = getLearnerProgress(completedIds);
+export function ProgressPanel({
+  completedIds,
+  lessons,
+}: {
+  completedIds: string[];
+  lessons: Lesson[];
+}) {
+  const progress = getLearnerProgress(completedIds, lessons);
 
   return (
     <section className="event-card relative overflow-hidden rounded-2xl p-5">

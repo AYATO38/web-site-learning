@@ -115,6 +115,14 @@ export async function ensureDb(): Promise<Sql> {
         CREATE INDEX IF NOT EXISTS nsd_questions_difficulty_idx
           ON nsd_questions (difficulty, sort_order)
       `);
+      await sql.query(`
+        CREATE TABLE IF NOT EXISTS lessons (
+          id TEXT PRIMARY KEY,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          data JSONB NOT NULL,
+          updated_at BIGINT NOT NULL
+        )
+      `);
     })();
   }
   await schemaReady;

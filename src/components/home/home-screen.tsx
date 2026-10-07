@@ -5,11 +5,13 @@ import Link from "next/link";
 import { MascotCharacter } from "@/components/home/mascot-character";
 import { LessonCard } from "@/components/home/lesson-card";
 import { ProgressPanel } from "@/components/home/progress-panel";
-import { getCompletedLessons, getLearnerProgress, lessons } from "@/lib/lessons";
+import { getCompletedLessons, getLearnerProgress } from "@/lib/lessons";
+import { useLessons } from "@/lib/use-lessons";
 import { ArrowRight } from "lucide-react";
 
 export function HomeScreen() {
   const [completed, setCompleted] = useState<string[]>([]);
+  const { lessons } = useLessons();
 
   useEffect(() => {
     setCompleted(getCompletedLessons());
@@ -26,7 +28,7 @@ export function HomeScreen() {
     };
   }, []);
 
-  const learner = getLearnerProgress(completed);
+  const learner = getLearnerProgress(completed, lessons);
 
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-lg flex-1 flex-col gap-10 px-5 pb-40 pt-10">
@@ -45,7 +47,7 @@ export function HomeScreen() {
         <MascotCharacter />
       </section>
 
-      <ProgressPanel completedIds={completed} />
+      <ProgressPanel completedIds={completed} lessons={lessons} />
 
       <section>
         <p className="section-en">Event</p>

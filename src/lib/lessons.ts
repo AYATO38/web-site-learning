@@ -16,7 +16,8 @@ export const lessonCategories: LessonCategory[] = [
   "チーム開発",
 ];
 
-export const lessons: Lesson[] = [
+/** The bundled starting list — seeds the database once, and shows instantly before the live list loads. */
+export const defaultLessons: Lesson[] = [
   {
     id: "html-css",
     title: "HTML / CSS 基礎",
@@ -83,13 +84,19 @@ export const lessons: Lesson[] = [
   },
 ];
 
-export function getLesson(id: string | null | undefined): Lesson | undefined {
+export function getLesson(
+  list: Lesson[],
+  id: string | null | undefined,
+): Lesson | undefined {
   if (!id) return undefined;
-  return lessons.find((lesson) => lesson.id === id);
+  return list.find((lesson) => lesson.id === id);
 }
 
-export function lessonsInCategory(category: LessonCategory): Lesson[] {
-  return lessons.filter((lesson) => lesson.category === category);
+export function lessonsInCategory(
+  list: Lesson[],
+  category: LessonCategory,
+): Lesson[] {
+  return list.filter((lesson) => lesson.category === category);
 }
 
 const STORAGE_KEY = "posse-lesson-progress";
@@ -142,10 +149,13 @@ export type LearnerProgress = {
   }[];
 };
 
-export function getLearnerProgress(completedIds: string[]): LearnerProgress {
-  const valid = new Set(lessons.map((lesson) => lesson.id));
+export function getLearnerProgress(
+  completedIds: string[],
+  list: Lesson[],
+): LearnerProgress {
+  const valid = new Set(list.map((lesson) => lesson.id));
   const completed = completedIds.filter((id) => valid.has(id)).length;
-  const total = lessons.length;
+  const total = list.length;
   const rank =
     [...learnerRanks].reverse().find((item) => completed >= item.minCompleted) ??
     learnerRanks[0];
@@ -163,7 +173,7 @@ export function getLearnerProgress(completedIds: string[]): LearnerProgress {
       ? Math.max(next.minCompleted - completed, 0)
       : 0,
     categories: lessonCategories.map((name) => {
-      const items = lessonsInCategory(name);
+      const items = lessonsInCategory(list, name);
       return {
         name,
         completed: items.filter((lesson) => completedIds.includes(lesson.id))

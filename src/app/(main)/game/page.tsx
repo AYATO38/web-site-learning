@@ -1,4 +1,5 @@
-import { Sparkles, Gamepad } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Gamepad, Users } from "lucide-react";
 
 export default function GamePage() {
   return (
@@ -14,6 +15,24 @@ export default function GamePage() {
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/next-server-day"
+          className="glass-card flex flex-col items-start gap-4 rounded-[1.4rem] p-6 transition-transform hover:-translate-y-0.5"
+        >
+          <span className="rounded-full bg-accent-soft p-3 text-accent">
+            <Users className="size-6" />
+          </span>
+          <div>
+            <h2 className="text-lg font-black tracking-tight">次サバDAY</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              チームでクイズに挑んで、みんなで順位を競おう
+            </p>
+          </div>
+          <div className="rounded-full bg-accent px-3 py-1 text-xs font-bold text-white">
+            遊ぶ
+          </div>
+        </Link>
+
         <article className="glass-card flex flex-col items-start gap-4 rounded-[1.4rem] p-6">
           <span className="rounded-full bg-accent-soft p-3 text-accent">
             <Gamepad className="size-6" />
